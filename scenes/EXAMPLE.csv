@@ -1,0 +1,23 @@
+HEADER,This Is the Scene Title – I Like Dashes,StartAtThisEvent,
+StartAtThisEvent,"The HEADER is required, it gives the scene a title, and its 3rd column determines where the scene starts.",NextGoHere,
+NextGoHere,Events will automatically progress to the next event if they have no target.,,
+Next,"For a normal event, the 1st column is the Event ID, the 2nd is the text content, the 3rd is the Event ID of the next event to play, and the 4th column contains any Event Commands.",,
+Next001,"Choices let you change the flow of the game. Any rows without an Event ID immediately following a choice command become that Event’s choices. Each choice has its own target, placed in the third column as usual.",,choice
+,"This Choice,",Next002,
+,"And this Choice go to the same place, the next event.",Next002,
+,"But, this one takes you back to the beginning.",StartAtThisEvent,
+Next002,"This event has the wipe Command. It clears the rolling text log. Do this periodically to separate scenes, for aesthetic reasons, and because the text box should only get so big",,wipe
+Next003,"Choices are often used with marks and returns. If you leave a mark it will sit in a list; this list can be added to endlessly. The next return will bounce you to the last marked event and clear it. Keep in mind, that a marked event will mark itself again, pass it clear_marks or forget_mark to either clear all marks, or just the last mark, respectively.",,
+Next004,"Marks without the reread Command will suppress reprinting their text when returned to. Reread commands like this one make chat clutter, but make it clearer where in the conversation flow the character is.",,choice mark reread
+,This choice will take you to an event with a return.,ReturningEvent001,
+,This choice takes you to an event with a clear_marks.,ReturningEvent002,
+,This choice takes you to an event with a forget_mark.,ReturningEvent003,
+ReturningEvent001,"This event has the return Event ID as a target, it will bounce you back to the last mark, which in this case is the choice event.",return,
+ReturningEvent002,"This event has clear_marks, it will just completely clear the marks list. Best practice between scenes to do this.",Dialogue001,clear_marks
+ReturningEvent003,"This event has forget_mark, it will clear the last mark, allowing you to find earlier marks. Useful for larger dialogue trees.",Dialogue001,forget_mark
+Dialogue001,"“This is dialogue.” The tutorial says. “It has a character tag in the commands, which must come first and be enclosed in brackets.”",,[Tutorial]
+Dialogue002,"“Dialogue will often present you with <topics> which you can learn by clicking on them. But, they have to be enabled before they will work, with the enable_topics command.” Topics are nice, the tutorial thinks, because they will set a mark automatically, so that they can be returned from easily.",,[Tutorial] enable_topics
+Dialogue003,"However, topics are only enabled as long as you have the enable_topics Command in that event. They will not be persistently enabled.",,
+Dialogue004,"“Topics might be disabled if there is no response for them in the current scene. But if a topic appears in a scene, it needs to have some sort of response there.”",,[Tutorial] enable_topics
+Dialogue005,"Always make sure your last event points to somehwere, or it will run over into your topics or cause a crash.",StartAtThisEvent,
+topics,"Topics like this are the bread and butter of this game, you will need to find many of them in order to progress.",return,

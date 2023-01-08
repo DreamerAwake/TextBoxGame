@@ -1,0 +1,15 @@
+HEADER,Generic Responses,
+START,,DEFAULT
+DEFAULT,Oops! You shouldn’t see this default response.,return
+Big One,"Almost twenty years ago now, the human race waged the most devastating war in your planet’s history. It was a disaster on every level, from loss of human life, to destruction of key cultural and industrial sites, to the overall reduction in life quality, freedom, and a functional freeze on class mobility; it was in every sense, by every known metric, the worst thing to ever happen.",
+bigone001,"The people responsible are now understandably mostly dead, imprisoned in the most abusive places available, or hiding in exile among the Theocrats of distant nations.",
+bigone002,Some people may not want to talk to you about this.,return
+Dr. Glubberwain,"Doctor Lawrence Glubberwain was a friend of your father’s. They taught at university together for all 12 years of <the Big One> to dodge the draft, then parted ways when your father uprooted your family to <Sel-Birta> to go into the silver mining business.",return
+On-Farness,,
+party,So much for that.,return
+rotting sealife,"Fish and other rotting things covered the shoreline. The smell was indescribable, and that strange mucous on the rocks still raises the hairs on the back of your neck when you imagine the texture of it on your skin. You should stop thinking about this.",return
+sailors,"The men on the ship did not speak directly to you the whole journey. They would speak in barks to each other intending for you to infer their message that supper was being served, or what have you. They had many strange rituals, like ducking their heads at every door frame, tall enough or not, or making odd signs with their fingers to their heads when they spotted certain seabirds.",
+sailors001,"You once watched a man accidentally smack his thumb with a hammer while tacking canvas over some cargo. With panicked haste you saw him remove his shoe and smash his large toe on the same foot with the hammer, leaving his toenail cracked and bleeding. As he bandaged himself and stuffed his foot back into his grimy sock, you asked him why he had done it.",
+sailors002,"The man simply grimaced and bit his tongue at you before saying, “Whanhy-Delse-Gaibva, she demands the hands and toes be matched.”",
+sailors003,Thereafter you began to take notice when the sailors were sleeping and found that any man on the boat missing a finger also was missing the same toe. You started to turn a blind eye to their little rituals from then on.,return
+Sel-Birta,"Sel-Birta is an ex-colonial state across the Sea in Ulhunnu. You lived there during your teens and early twenties, and it is where you received most of your education. But it is no longer your home.",return

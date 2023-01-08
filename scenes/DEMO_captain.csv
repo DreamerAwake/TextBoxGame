@@ -1,0 +1,21 @@
+HEADER,The Young Sea Captain – A man unsteady on his land-legs,Dialogue001,
+Dialogue001,"“Well, this is as far as we’ll go.” He says, lighting a pipe with a punk-box that threatens to catch flame in the gale. “My men shun places like this, and I would too if I wasn’t bound so to the old <Doctor>.”",,[Sea Captain] disable_topics wipe
+Dialogue002,“We’ll be back for you in the morning four days from now. Stay safe.”,,[Sea Captain]
+Dialogue003,“Anything else before I get going?”,,[Sea Captain] enable_topics choice mark
+,Where are we?,Response001,
+,Have the other guests already arrived?,Response003,
+,What if something happens?,Response004,
+,Nothing else.,Response007,
+Response001,"“This is <Elenore Island>, in the West Sea. It’s a private island that the <Doctor> purchased from the <Crown> for pennies after <the war> ended and the bonds they sold started coming due. Now that he’s retired, he lives out here. If you can believe it.”",,[Sea Captain] disable_topics
+Response002,"“We come by and drop supplies for him here on the beach; but otherwise he’s completely alone out here. We used to be friends, you know. I hope your visit does him some good.” The captain ashes his pipe into the sand and digs another wad of sweet tobacco from somewhere inside his oiled coat.",return,[Sea Captain] disable_topics
+Response003,"“Yes, yes, they all arrived on another ship last night. They were all just coming back from abroad as I understand it.”",return,[Sea Captain] disable_topics
+Response004,"“You’ll just have to wait it out, I suppose.” He says bemused. “There’re no telegraph lines out here.”",,[Sea Captain] disable_topics
+Response005,"He thinks for a moment. “There is an old <lighthouse> on the other side of the island. If you lit the lamp up there, someone might notice and come investigating.”",,[Sea Captain] disable_topics
+Response006,“Slim odds though.” He takes another puff. “These waters are bereft of anything worth lighting. Our charity missions to the <Doctor> notwithstanding.”,return,[Sea Captain] disable_topics
+Response007,"“Well then, have fun.” The young Captain cocks an odd grin. “Good luck.”",,[Sea Captain] clear disable_topics
+Response008,"He dumps the cherry of his pipe into the sea where it sizzles pitifully before pushing the row boat back from shore and clambering in as his sailors once more begin their work. The Captain waves back as the rowers cut the waves, and by strokes and moments, you are left alone on the shore of the island.",,
+Dr. Glubberwain,,return,[Sea Captain]
+party,,return,
+rotting sealife,,return,
+sailors,,,
+sailors002,,return,

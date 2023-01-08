@@ -1,0 +1,4 @@
+*.ai
+*.ods
+/docs/
+/__pycache__/
