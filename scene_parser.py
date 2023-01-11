@@ -1,3 +1,4 @@
+import mypyg
 import csv
 
 
@@ -7,6 +8,7 @@ class SceneParser:
         self.current_events_script = None
         self.current_event = None
         self.current_event_header = None
+        self.use_generic_topics = None
         self.start_in = None
 
         self.enable_topics = False
@@ -30,13 +32,19 @@ class SceneParser:
         elif self.current_event.next_ID == "return":
             self.return_to_last_mark()
         else:
-            self.current_event = self.current_events_script[self.current_event.next_ID]
-            self._read_topics_enabled()
+            self.get_event_at_ID(self.current_event.next_ID)
 
-    def get_event_at_ID(self, ID_code):
-        """Gets the event with the given ID in the current scene. Sets it to the current event."""
-        self.current_event = self.current_events_script[ID_code]
-        self._read_topics_enabled()
+    def get_event_at_ID(self, ID_code, inject_event=None):
+        """Gets the event with the given ID in the current scene. Sets it to the current event.
+        If inject event is not None, then the given event object will run instead."""
+        if inject_event:
+            self.current_event = inject_event
+            self._read_topics_enabled()
+        elif ID_code == "return":
+            self.return_to_last_mark()
+        else:
+            self.current_event = self.current_events_script[ID_code]
+            self._read_topics_enabled()
 
     def mark_this_event(self):
         """Marks the current event. The next event with 'return' will jump back to this marked command.
@@ -70,19 +78,22 @@ class SceneParser:
         unparsed_event_list = []
 
         # Open the scene file and write it into a python list
-        with open(scene_filename, newline='') as scenefile:
+        with open(scene_filename, newline='', encoding='UTF-8') as scenefile:
             scene_csv_reader = csv.reader(scenefile)
             for each_line in scene_csv_reader:
                 unparsed_event_list.append(each_line)
 
         # Find stage direction lines from the top of the scene file, process and remove them
-        stage_directions = ("HEADER")   # Extend this tuple with other stage directions as you design them
+        stage_directions = ("HEADER", "GENERIC_TOPICS")   # Extend this tuple with other stage directions as you design them
 
         while unparsed_event_list[0][0] in stage_directions:
             this_stage_direction = unparsed_event_list.pop(0)
             if this_stage_direction[0] == "HEADER":
                 self.current_event_header = this_stage_direction[1]
                 self.start_in = this_stage_direction[2]
+            elif this_stage_direction[0] == "GENERIC_TOPICS":
+                self.use_generic_topics = this_stage_direction[1].split(", ")
+
 
         # Pass through all the rows of the unparsed event list and make event objects for them
         event_dict = {}
@@ -108,7 +119,18 @@ class SceneEvent:
     def __init__(self, event_list, event_index_number):
         self.ID = event_list[event_index_number][0]
         self.text = event_list[event_index_number][1]
+
+        # Store Event Command Data
         self.said_by_character = None
+        self.check_item_name = None
+        self.check_item_quantity = None
+        self.check_roll_difficulty = None
+        self.check_roll_range = None
+        self.on_fail_event_ID = None
+        self.give_item_name = None
+        self.give_item_quantity = None
+
+        # init commands, choices and the next_ID
         self.commands, self.choices = self._read_event_commands(event_list, event_index_number)
         self.next_ID = self._read_next_ID(event_list, event_index_number)
 
@@ -139,6 +161,10 @@ class SceneEvent:
         # Add command tags
         while event_command_string:
             next_command = event_command_string.pop(0)
+
+            # Read expression commands into the event properly
+            next_command = self._read_expression_command(next_command)
+
             found_commands.append(next_command)
 
         # If the text is a choice, find the choices.
@@ -157,10 +183,60 @@ class SceneEvent:
         else:
             return found_commands, None
 
+    def _read_expression_command(self, expression_command):
+        """Reads and manages one of the expression commands if passed one as a string, otherwise returns the given
+        string unchanged."""
+
+        # Checks for the give_item expression
+        # give_item(item_name,give_quantity)
+        if "give_item" in expression_command:
+
+            arguments = expression_command[10:-1].split(",")
+            self.give_item_name = arguments[0]
+            self.give_item_quantity = int(arguments[1])
+
+            return "give_item"
+
+        else:
+            return expression_command
+
+    def _read_item_checks(self, next_ID):
+        """Checks if the given string is a valid check_item expression.
+        If it is, register it in the event, otherwise returns the passed string.
+        check_item(item_name,quantity_needed,on_pass_event_ID,on_fail_event_ID)"""
+        # Determine if this string is the right kind of command
+        if "check_item" in next_ID:
+            arguments = next_ID[11:-1].split(",")
+
+            self.check_item_name = arguments[0]
+            self.check_item_quantity = int(arguments[1])
+            self.on_fail_event_ID = arguments[3]
+
+            return arguments[2]
+
+        elif "check_roll" in next_ID:
+            arguments = next_ID[11:-1].split(",")
+
+            self.check_roll_difficulty = int(arguments[0])  # Number that must be tied or beat for success
+            self.check_roll_range = int(arguments[1])  # Total range of the roll, linear distribution
+            self.on_fail_event_ID = arguments[3]
+
+            try:
+                self.check_item_name = arguments[4]
+            except IndexError:
+                pass
+
+            return arguments[2]
+
+        return next_ID
+
     def _read_next_ID(self, event_list, event_index_number):
+        """Returns the next_ID of the event at the given index number."""
         next_ID = event_list[event_index_number][2]
 
         if next_ID:
+            # Check if the next_ID is an expression of some sort (item check, etc.)
+            next_ID = self._read_item_checks(next_ID)
             return next_ID
         else:
             try:

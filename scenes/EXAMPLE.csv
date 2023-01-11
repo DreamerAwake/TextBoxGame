@@ -1,8 +1,10 @@
-HEADER,This Is the Scene Title � I Like Dashes,StartAtThisEvent,
+HEADER,This Is the Scene Title - I Like Dashes,Dialogue005,
+GENERIC_TOPICS,,,
+STYLE,,,
 StartAtThisEvent,"The HEADER is required, it gives the scene a title, and its 3rd column determines where the scene starts.",NextGoHere,
 NextGoHere,Events will automatically progress to the next event if they have no target.,,
 Next,"For a normal event, the 1st column is the Event ID, the 2nd is the text content, the 3rd is the Event ID of the next event to play, and the 4th column contains any Event Commands.",,
-Next001,"Choices let you change the flow of the game. Any rows without an Event ID immediately following a choice command become that Event�s choices. Each choice has its own target, placed in the third column as usual.",,choice
+Next001,"Choices let you change the flow of the game. Any rows without an Event ID immediately following a choice command become that Event’s choices. Each choice has its own target, placed in the third column as usual.",,choice
 ,"This Choice,",Next002,
 ,"And this Choice go to the same place, the next event.",Next002,
 ,"But, this one takes you back to the beginning.",StartAtThisEvent,
@@ -15,9 +17,42 @@ Next004,"Marks without the reread Command will suppress reprinting their text wh
 ReturningEvent001,"This event has the return Event ID as a target, it will bounce you back to the last mark, which in this case is the choice event.",return,
 ReturningEvent002,"This event has clear_marks, it will just completely clear the marks list. Best practice between scenes to do this.",Dialogue001,clear_marks
 ReturningEvent003,"This event has forget_mark, it will clear the last mark, allowing you to find earlier marks. Useful for larger dialogue trees.",Dialogue001,forget_mark
-Dialogue001,"�This is dialogue.� The tutorial says. �It has a character tag in the commands, which must come first and be enclosed in brackets.�",,[Tutorial]
-Dialogue002,"�Dialogue will often present you with <topics> which you can learn by clicking on them. But, they have to be enabled before they will work, with the enable_topics command.� Topics are nice, the tutorial thinks, because they will set a mark automatically, so that they can be returned from easily.",,[Tutorial] enable_topics
+Dialogue001,"“This is dialogue.” The tutorial says. “It has a character tag in the commands, which must come first and be enclosed in brackets.”",,[Tutorial]
+Dialogue002,"“Dialogue will often present you with <topics> which you can learn by clicking on them. But, they have to be enabled before they will work, with the enable_topics command.” Topics are nice, the tutorial thinks, because they will set a mark automatically, so that they can be returned from easily.",,[Tutorial] enable_topics
 Dialogue003,"However, topics are only enabled as long as you have the enable_topics Command in that event. They will not be persistently enabled.",,
-Dialogue004,"�Topics might be disabled if there is no response for them in the current scene. But if a topic appears in a scene, it needs to have some sort of response there.�",,[Tutorial] enable_topics
-Dialogue005,"Always make sure your last event points to somehwere, or it will run over into your topics or cause a crash.",StartAtThisEvent,
+Dialogue004,"Topics might be disabled if there is no response for them in the current scene. But if a topic appears in a scene, it needs to have some sort of response there.",,[Tutorial] enable_topics
+Dialogue005,"“You can spice up dialogue using inline expressions, too.” /i The tutorial explains. / “Using ‘/i’ or ‘/b’ will give you /i italic / text and /b bold / text, respectively. Then, adding ‘/’ will end all current font effects. This is /b important / for writing scenes that feel good to read and have weight.",,
+Items001,"You can give the player items with the give_item(item_name,quantity) command.",,choice
+,Click here to get 1 gold.,Items002,
+,Click here to move on.,Items003,
+Items002,“You got one gold!”,Items004,"[Tutorial] give_item(Gold,1)"
+Items003,“You decided not to take the gold.”,,[Tutorial]
+Items004,"Later on you can check for items with check_item(item_name,quantity_needed,pass_event_ID,fail_event_ID). If the player has the specified quantity of items or more, then they move to the pass event, otherwise, they go to the fail event. because of this, check_item is treated as a target event_ID, not a regular command.","check_item(Gold,1,Items005,Items006)",
+Items005,You had enough gold to pass this check!,Items007,
+Items006,You did not have enough gold to pass this check.,Items007,
+Items007,"Then, you see {something shiny,Gold,1} laying on the ground.",,
+Items008,"The shiny thing is Gold, and you can pick it up by clicking on it.",,
+Items009,"At this point if you haven’t grabbed it, its gone. This event has the clean_up_items command, which makes ungrabbed items disappear.",,clean_up_items
+Checks001,"Here, have some gold, just for being a cool dude.",,choice mark reread
+,"Okay, gimmie.",Checks002,
+,"No, no gold for me thanks.",Checks003,
+Checks002,You got 5 gold!,Checks004,"give_item(Gold,5)"
+Checks003,"Okay, fine, be that way.",Checks004,
+Checks004,"You can also roll random checks with check_roll(difficulty,range,pass_event_ID,fail_event_ID, optional_item_modifier)","check_roll(10,12,Checks005,Checks006,Gold)",
+Checks005,"You have passed the check, you were either lucky or had a lot of gold.",Checks007,
+Checks006,"You failed the check, understandably.",Checks007,
+Checks007,Would you like to go back for more gold and try again?,,choice
+,"Yes, please.",return,
+,"No, thanks.",Silence001,
+Silence001,You can make an event suppress its button and simply play the next line.,,clear_marks
+Silence002,"For example this one,",,silent
+Silence003,leads,,silent
+Silence004,right,,silent
+Silence005,into,,silent
+Silence006,this one.,,
+Silence007,This is useful for scene flow.,,
+EndOfExample,"Always make sure your last event points to somewhere, or it will run over into your topics or cause a crash.",,choice
+,Click here to go back to the beginning.,StartAtThisEvent,
+,Click here to learn about Dialogue again.,Dialogue001,
+,Click here to be offered some gold again.,Items001,
 topics,"Topics like this are the bread and butter of this game, you will need to find many of them in order to progress.",return,

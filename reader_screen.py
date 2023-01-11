@@ -1,4 +1,7 @@
+import random
+
 import pygame
+import mypyg
 import scene_parser
 import controls
 import settings
@@ -15,7 +18,7 @@ class GUIAdventureScreen:
         self.controller = controller_object  # Store the controls container
 
         # Initialize render surfaces
-        self.gui_bg, self.render_surface, self.sidebar_topics_surface, self.rolling_text_surface = self._init_surfaces()
+        self.gui_bg, self.render_surface, self.sidebar_topics_surface, self.rolling_text_surface, self.header_surface = self._init_surfaces()
 
         # Initialize the sprite groups
         self.rolling_text_clickable_topics_group = pygame.sprite.Group()
@@ -35,12 +38,18 @@ class GUIAdventureScreen:
         self.response_pane_rect = pygame.Rect((self.settings.render_surface_size[0] * 0.34, self.settings.render_surface_size[1] * 0.80),
                                               (self.settings.render_surface_size[0] * 0.66, self.settings.render_surface_size[1] * 0.20))
 
+        # Initialize the rect for the header pane
+        self.header_rect = self.header_surface.get_rect()
+        self.header_rect.centerx = self.settings.render_surface_size[0] * 0.5
+
         # Create the scene event parser
         self.event_parser = scene_parser.SceneParser(initial_scene_script)
 
         # Create the text handler.
         self.words = []  #Contains the list of individual words to be written to the text box in the coming frames.
         self.is_writing_text = True
+        self.is_bold = False
+        self.is_italics = False
         self.last_placed_text_rect = pygame.Rect((self.settings.paragraph_tab_width, 0), self.settings.font_text_body.size("l"))
 
         # Initialize the topics sidebar
@@ -64,12 +73,27 @@ class GUIAdventureScreen:
         rolling_text_surface.fill(self.settings.colors["transparency"])
         rolling_text_surface.set_colorkey(self.settings.colors["transparency"])
 
-        return gui_bg, render_surface, sidebar_topics_surface, rolling_text_surface
+        # The surface for the scene title header
+        header_surface = pygame.Surface((self.settings.render_surface_size[0] * 0.98, self.settings.render_surface_size[1] * 0.07))
+        header_surface.fill(self.settings.colors["transparency"])
+        header_surface.set_colorkey(self.settings.colors["transparency"])
+
+        return gui_bg, render_surface, sidebar_topics_surface, rolling_text_surface, header_surface
 
     def _init_topic_sidebar(self):
         """Initializes the topic sidebar for rendering."""
         self.fill_sidebar_topics()
         self.sort_sidebar_topics()
+
+    def _render_header_surface(self):
+        """Renders the header surface with the header text."""
+        self.header_surface.fill(self.settings.colors["transparency"])
+
+        rendered_text = self.settings.font_heading_1.render(self.event_parser.current_event_header, True, self.settings.dynamic_colors["header_text"], self.settings.colors["transparency"])
+        rendered_text_rect = rendered_text.get_rect()
+        rendered_text_rect.centery = self.header_rect.height * 0.5
+
+        self.header_surface.blit(rendered_text, rendered_text_rect)
 
     def _end_event(self):
         """Runs the code that displays buttons at the end of an event."""
@@ -87,6 +111,17 @@ class GUIAdventureScreen:
                              each_choice)
                 button_vertical_offset += button_vertical_spacing
 
+        # If the event has the silent command, skip placing the button
+        elif "silent" in self.event_parser.current_event.commands:
+            self.set_event_markers()
+
+            self.is_writing_text = True
+            self.controller.disable()
+
+            self.event_parser.get_next_event()
+
+            return None  # Used to skip the last block of code in the function, which normally does the opposite of this
+
         # If the event is text now is the time to display the continue button.
         else:
             ContinueButton(self, self.response_pane_rect.center)
@@ -102,7 +137,7 @@ class GUIAdventureScreen:
 
             # Create the render and the rects
             title_text_render = self.settings.font_text_small_caps.render(title_text_string, True,
-                                                                          self.settings.colors["dark blue"],
+                                                                          self.settings.dynamic_colors["character_tag"],
                                                                           self.settings.colors["transparency"])
             title_text_rect = title_text_render.get_rect()
             title_text_rect.left = 0
@@ -116,21 +151,7 @@ class GUIAdventureScreen:
         """Draws a single word from the words list for the _write_next_word function."""
 
         # Establish local variables
-        next_word = self.words.pop(0)
-        next_topic = None
-
-        # Check if the next word is a topic which will be enclosed in <_>
-        if "<" in next_word:
-            # Check if the word needs to be extended to find the rest of the topic.
-            while ">" not in next_word:
-                next_word += " " + self.words.pop(0)
-
-            next_word = remove_character(next_word, '<', '>')
-            next_word_truncated = remove_character(next_word.lower(), remove_non_alphanumeric=True)
-
-            for each_topic in self.character.topics:
-                if next_word_truncated == each_topic.title.lower() or next_word_truncated in each_topic.aliases:
-                    next_topic = TopicSprite(next_word, each_topic, self, self.rolling_text_clickable_topics_group)
+        next_topic, next_word = self._read_inline_expression(self.words.pop(0))
 
         # Check that we don't need a new line for this word, if we do, adjust self.last_placed_text_rect
         if self.settings.font_text_body.size(" " + next_word)[0] + self.last_placed_text_rect.right > \
@@ -149,8 +170,7 @@ class GUIAdventureScreen:
             self.last_placed_text_rect = next_topic.rect.copy()
 
         else:
-            this_word_render = self.settings.font_text_body.render(next_word, True, self.settings.colors["black"],
-                                                                   self.settings.colors["transparency"])
+            this_word_render = self.settings.render_text_body_font(next_word, self.settings.dynamic_colors["body_text"], self.is_italics, self.is_bold)
             this_word_rect = this_word_render.get_rect()
             this_word_rect.left = self.last_placed_text_rect.right + self.settings.font_text_body.size(" ")[0]
             this_word_rect.bottom = self.last_placed_text_rect.bottom
@@ -169,9 +189,16 @@ class GUIAdventureScreen:
             if "wipe" in self.event_parser.current_event.commands:
                 self._wipe_rolling_textbox()
 
+            # If unwiped, you may have to clear up old unpicked up items
+            elif "clean_up_items" in self.event_parser.current_event.commands:
+                self._clean_up_items()
+
             # Check to see if a character tag needs to be placed.
             if "character" in self.event_parser.current_event.commands:
                 self._write_character_tag()
+
+            # Rerender the header in case it has changed
+            self._render_header_surface()
 
         # If the event is suppressing text, skip rendering and end the event.
         elif self.words and self.event_parser.suppress_text:
@@ -196,6 +223,69 @@ class GUIAdventureScreen:
                 self._end_event()
 
         return self.is_writing_text
+
+    def _read_inline_expression(self, expression):
+        """Given a string from the _write_single_word function, determines if it has an expression, such as
+        a topic or item tag. Then returns the topic object if so. Otherwise returns None."""
+
+        # Check for bold and italics tags
+        if expression == "/b":
+            self.is_bold = True
+            expression = self.words.pop(0)
+
+        elif expression == "/i":
+            self.is_italics = True
+            expression = self.words.pop(0)
+
+        elif expression == "/":
+            self.is_bold = False
+            self.is_italics = False
+            expression = self.words.pop(0)
+
+        # Readjust next_word
+        next_word = expression
+
+        # Check if the next word is a topic which will be enclosed in <_>
+        if "<" in expression:
+            # Check if the word needs to be extended to find the rest of the topic.
+            while ">" not in expression:
+                expression += " " + self.words.pop(0)
+
+            next_word = mypyg.remove_character(expression, '<', '>')
+            next_word_truncated = mypyg.remove_character(next_word.lower(), remove_non_alphanumeric=True)
+
+            for each_topic in self.character.topics:
+                if next_word_truncated == each_topic.title.lower() or next_word_truncated in each_topic.aliases:
+                    return TopicSprite(next_word, each_topic, self, self.rolling_text_clickable_topics_group), next_word
+
+        # Check if the next word is an item which will be enclosed in {_}
+        elif "{" in expression:
+            # Check if the word needs to be extended to find the rest of the topic.
+            while "}" not in expression:
+                expression += " " + self.words.pop(0)
+
+            # Split the expression to retrieve arguments
+            expression = expression[1:-1]
+            arguments = expression.split(",")
+
+            # Check if there is an alias included
+            if len(arguments) < 3:
+                this_item = self.character.inventory.bag[arguments[0]]
+                quantity = int(arguments[1])
+            else:
+                this_item = self.character.inventory.bag[arguments[1]]
+                quantity = int(arguments[2])
+
+            return ItemTopicSprite(arguments[0], this_item, quantity, self, self.rolling_text_clickable_topics_group), next_word
+
+        else:
+            return None, next_word
+
+    def _clean_up_items(self):
+        """Sets all item topics in the rolling text box to read as already picked up."""
+        for each_sprite in self.rolling_text_clickable_topics_group:
+            each_sprite.is_picked_up = True
+            each_sprite.update()
 
     def _wipe_rolling_textbox(self):
         """Wipes the rolling text box, 'factory reset'."""
@@ -230,6 +320,7 @@ class GUIAdventureScreen:
         self.redraw_rolling_text(draw_ui_bg=False)
         self.redraw_buttons()
         self.redraw_sidebar_topics()
+        self.redraw_header()
 
     def add_to_sidebar_topics(self, topic_object):
         """Adds the given topic object to the sidebar as a topic sprite."""
@@ -249,7 +340,7 @@ class GUIAdventureScreen:
         # Pull from the list of all topics a list of topics in the scene you already know, and also all other known topics
         for each_topic in self.character.topics:
             if each_topic.is_known_topic:
-                if each_topic.title in self.event_parser.current_events_script.keys():
+                if each_topic.title in self.event_parser.current_events_script.keys() or each_topic.title in self.event_parser.use_generic_topics:
                     available_topics.append(each_topic)
                 else:
                     grayed_out_topics.append(each_topic)
@@ -261,6 +352,7 @@ class GUIAdventureScreen:
             for each_topic_sprite in self.sidebar_topics_group:
                 if each_topic == each_topic_sprite.topic:
                     each_topic_sprite.is_active = True
+                    each_topic_sprite.update()
                     each_topic_sprite.rect.top = current_y_position
                     current_y_position += each_topic_sprite.rect.height
                     break
@@ -272,6 +364,7 @@ class GUIAdventureScreen:
             for each_topic_sprite in self.sidebar_topics_group:
                 if each_topic == each_topic_sprite.topic:
                     each_topic_sprite.is_active = False
+                    each_topic_sprite.update()
                     each_topic_sprite.rect.top = current_y_position
                     current_y_position += each_topic_sprite.rect.height
                     break
@@ -311,8 +404,13 @@ class GUIAdventureScreen:
     def redraw_sidebar_topics(self):
         """Redraws the sidebar containing the player's known topics."""
         self.render_surface.blit(self.gui_bg, self.sidebar_topics_rect, self.sidebar_topics_rect)
+        self.sidebar_topics_surface.fill(self.settings.colors["transparency"])
         self.sidebar_topics_group.draw(self.sidebar_topics_surface)
         self.render_surface.blit(self.sidebar_topics_surface, self.sidebar_topics_rect)
+
+    def redraw_header(self):
+        """Redraws the scene title header."""
+        self.render_surface.blit(self.header_surface, self.header_rect)
 
     def update(self):
         """Called once per frame."""
@@ -357,10 +455,10 @@ class TopicSprite(gui.Button):
     def _init_image(self):
         """Draws the image for the button and saves it as the self.image."""
         if self.topic.is_known_topic:
-            self.image = self.settings.font_text_body.render(self.text, True, self.settings.colors["light blue"], self.settings.colors["transparency"])
+            self.image = self.settings.render_text_body_font(self.text, self.settings.dynamic_colors["topic_known"], self.gui.is_italics, self.gui.is_bold)
         else:
-            self.image = self.settings.font_text_body.render(self.text, True, self.settings.colors["orange"], self.settings.colors["transparency"])
-
+            self.image = self.settings.render_text_body_font(self.text, self.settings.dynamic_colors["topic_unknown"],
+                                                             self.gui.is_italics, self.gui.is_bold)
     def draw(self, target_surface):
         """Draws the rendered topic to the surface"""
         self._init_image()
@@ -383,12 +481,54 @@ class TopicSprite(gui.Button):
                 self.topic.is_known_topic = True
                 self.gui.add_to_sidebar_topics(self.topic)
                 self.gui.sort_sidebar_topics()
+                self.gui.rolling_text_clickable_topics_group.update()
 
             # Set the scene mark
             self.gui.event_parser.mark_this_event()
 
             # Get the scene related to the topic
-            self.gui.event_parser.get_event_at_ID(self.topic.title)
+            if self.topic.title in self.gui.event_parser.current_events_script.keys():
+                self.gui.event_parser.get_event_at_ID(self.topic.title)
+            else:
+                self.gui.event_parser.get_event_at_ID("", inject_event=self.topic.event)
+
+
+class ItemTopicSprite(gui.Button):
+    """An in-line topic that gives the player an item"""
+    def __init__(self, display_alias, item_object, give_quantity, gui_object, *topic_groups):
+        self.text = display_alias
+        self.item = item_object
+        self.quantity = give_quantity
+        self.gui = gui_object
+
+        self.is_picked_up = False
+
+        super().__init__(gui_object.settings, *topic_groups)
+
+    def _init_image(self):
+        """Draws the image for the button and saves it as the self.image."""
+        if self.is_picked_up:
+            self.image = self.settings.render_text_body_font(self.text, self.settings.dynamic_colors["dull_text"],
+                                                             self.gui.is_italics, self.gui.is_bold)
+
+        else:
+            self.image = self.settings.render_text_body_font(self.text, self.settings.dynamic_colors["inline_item"],
+                                                             self.gui.is_italics, self.gui.is_bold)
+
+    def draw(self, target_surface):
+        """Draws the rendered topic to the surface"""
+        self._init_image()
+        target_surface.blit(self.image, self.rect)
+
+    def update(self):
+        self._init_image()
+
+    def on_click(self):
+        """Gives the player the item and toggles the item topic off."""
+        if not self.is_picked_up:
+            self.gui.character.inventory.add(self.item.name, self.quantity)
+            self.is_picked_up = True
+            self._init_image()
 
 
 class SidebarTopicSprite(gui.Button):
@@ -404,9 +544,9 @@ class SidebarTopicSprite(gui.Button):
     def _init_image(self):
         """Draws the image for the button and saves it as the self.image."""
         if self.is_active:
-            self.image = self.settings.font_UI_text.render(self.text, True, self.settings.colors["light blue"], self.settings.colors["transparency"])
+            self.image = self.settings.font_UI_text.render(self.text, True, self.settings.dynamic_colors["topic_known"], self.settings.colors["transparency"])
         else:
-            self.image = self.settings.font_UI_text.render(self.text, True, self.settings.colors["gray"], self.settings.colors["transparency"])
+            self.image = self.settings.font_UI_text.render(self.text, True, self.settings.dynamic_colors["dull_text"], self.settings.colors["transparency"])
 
     def draw(self, target_surface):
         """Draws the rendered topic to the surface"""
@@ -418,18 +558,23 @@ class SidebarTopicSprite(gui.Button):
 
     def on_click(self):
         """Starts the topic event in the parser's event list. Sets the necessary flags."""
-        # Check if the event parser has enabled topic selection
-        if self.gui.event_parser.enable_topics:
+        if self.is_active:
 
-            # Set variables to prepare for the next pass of text writing
-            self.gui.is_writing_text = True
-            self.gui.controller.disable()
+            # Check if the event parser has enabled topic selection
+            if self.gui.event_parser.enable_topics:
 
-            # Set the scene mark if one needs to be present
-            self.gui.event_parser.mark_this_event()
+                # Set variables to prepare for the next pass of text writing
+                self.gui.is_writing_text = True
+                self.gui.controller.disable()
 
-            # Get the scene related to the topic
-            self.gui.event_parser.get_event_at_ID(self.topic.title)
+                # Set the scene mark if one needs to be present
+                self.gui.event_parser.mark_this_event()
+
+                # Get the scene related to the topic
+                if self.topic.title in self.gui.event_parser.use_generic_topics:
+                    self.gui.event_parser.get_event_at_ID("", inject_event=self.topic.event)
+                else:
+                    self.gui.event_parser.get_event_at_ID(self.topic.title)
 
 
 class ContinueButton(gui.Button):
@@ -465,7 +610,40 @@ class ContinueButton(gui.Button):
         self.gui.buttons_group.empty()
         self.gui.controller.disable()
 
-        self.gui.event_parser.get_next_event()
+        # Check if there is a give_item command
+        if "give_item" in self.gui.event_parser.current_event.commands:
+            self.gui.character.inventory.add(self.gui.event_parser.current_event.give_item_name,
+                                             self.gui.event_parser.current_event.give_item_quantity)
+
+        # Check if there is an item_check
+        if self.gui.event_parser.current_event.check_item_quantity:
+            # Run the item check
+            if self.gui.character.inventory.bag[self.gui.event_parser.current_event.check_item_name].stock and \
+                    self.gui.character.inventory.bag[self.gui.event_parser.current_event.check_item_name].stock >= self.gui.event_parser.current_event.check_item_quantity:
+                self.gui.event_parser.get_next_event()
+            else:
+                self.gui.event_parser.get_event_at_ID(self.gui.event_parser.current_event.on_fail_event_ID)
+
+        # Check if there is a roll_check
+        elif self.gui.event_parser.current_event.check_roll_difficulty:
+            print("Rolling check")
+            print(f"Difficulty {self.gui.event_parser.current_event.check_roll_difficulty}, Roll Range 1-{self.gui.event_parser.current_event.check_roll_range}")
+            # Run the roll_check
+            random_number = random.randint(1, self.gui.event_parser.current_event.check_roll_range)
+            print(f'Number "on-the-dice": {random_number}')
+            # Add item modifiers
+            try:
+                random_number += self.gui.character.inventory.bag[self.gui.event_parser.current_event.check_item_name].stock
+            except TypeError:
+                pass
+            print(f"Final total: {random_number}")
+            if random_number >= self.gui.event_parser.current_event.check_roll_difficulty:
+                self.gui.event_parser.get_next_event()
+            else:
+                self.gui.event_parser.get_event_at_ID(self.gui.event_parser.current_event.on_fail_event_ID)
+
+        else:
+            self.gui.event_parser.get_next_event()
 
 
 class ChoiceButton(ContinueButton):
@@ -488,34 +666,6 @@ class ChoiceButton(ContinueButton):
         self.gui.controller.disable()
 
         self.gui.event_parser.get_event_at_ID(self.gui.event_parser.current_event.choices[self.text])
-
-
-def remove_character(source_string, *characters_to_remove, remove_non_alphanumeric=False):
-    """Removes the remove_character from a given string and returns that string without those characters.
-    If remove_non_alphanumeric is True, it will remove all non letter/number characters from the string,
-    except spaces which are left untouched."""
-    # If no settings are selected, then return the base string
-    if not characters_to_remove and not remove_non_alphanumeric:
-        return source_string
-
-    if remove_non_alphanumeric:
-        new_string = ""
-
-        # For each character, check if it is alphanumeric, and if so, add it to the new string.
-        for each_character in [*source_string]:
-            if each_character.isalnum() or each_character == " ":
-                new_string += each_character
-
-        return new_string
-
-    if characters_to_remove:
-        new_string = ""
-
-        for each_character in [*source_string]:
-            if each_character not in characters_to_remove:
-                new_string += each_character
-
-        return new_string
 
 
 if __name__ == "__main__":
