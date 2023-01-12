@@ -4,10 +4,13 @@ import csv
 
 class SceneParser:
     """This object reads scenes from files stored as csv data and returns events useable by the reader_screen."""
-    def __init__(self, initial_scene_script):
+    def __init__(self, initial_scene_script, settings):
+        self.settings = settings
+
         self.current_events_script = None
         self.current_event = None
         self.current_event_header = None
+        self.scene_style = "DEFAULT"
         self.use_generic_topics = None
         self.start_in = None
 
@@ -84,7 +87,7 @@ class SceneParser:
                 unparsed_event_list.append(each_line)
 
         # Find stage direction lines from the top of the scene file, process and remove them
-        stage_directions = ("HEADER", "GENERIC_TOPICS")   # Extend this tuple with other stage directions as you design them
+        stage_directions = ("HEADER", "GENERIC_TOPICS", "STYLE")   # Extend this tuple with other stage directions as you design them
 
         while unparsed_event_list[0][0] in stage_directions:
             this_stage_direction = unparsed_event_list.pop(0)
@@ -93,7 +96,8 @@ class SceneParser:
                 self.start_in = this_stage_direction[2]
             elif this_stage_direction[0] == "GENERIC_TOPICS":
                 self.use_generic_topics = this_stage_direction[1].split(", ")
-
+            elif this_stage_direction[0] == "STYLE":
+                self.scene_style = this_stage_direction[1]
 
         # Pass through all the rows of the unparsed event list and make event objects for them
         event_dict = {}
@@ -109,6 +113,7 @@ class SceneParser:
             else:
                 current_row_index += 1
 
+        # Set up events to begin running
         self.current_events_script = event_dict
         self.get_event_at_ID(self.start_in)  # Loads the first event
         self._read_topics_enabled()

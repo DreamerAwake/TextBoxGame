@@ -43,10 +43,10 @@ class GUIAdventureScreen:
         self.header_rect.centerx = self.settings.render_surface_size[0] * 0.5
 
         # Create the scene event parser
-        self.event_parser = scene_parser.SceneParser(initial_scene_script)
+        self.event_parser = scene_parser.SceneParser(initial_scene_script, self.settings)
 
         # Create the text handler.
-        self.words = []  #Contains the list of individual words to be written to the text box in the coming frames.
+        self.words = []  # Contains the list of individual words to be written to the text box in the coming frames.
         self.is_writing_text = True
         self.is_bold = False
         self.is_italics = False
@@ -58,7 +58,7 @@ class GUIAdventureScreen:
     def _init_surfaces(self):
         """Initializes and returns the surfaces needed by the constructor."""
         # BG image for the GUI pane
-        gui_bg = self._init_bg_surface("images/gui/debug_gui_winbg.png")
+        gui_bg = self.init_bg_surface("images/gui/debug_gui_winbg.png")
 
         # The primary render surface for this GUI pane
         render_surface = gui_bg.copy()
@@ -80,28 +80,6 @@ class GUIAdventureScreen:
 
         return gui_bg, render_surface, sidebar_topics_surface, rolling_text_surface, header_surface
 
-    def _init_bg_surface(self, bg_file_path):
-        """Takes a filepath and returns the gui_bg surface loaded from that path,
-        colored to match the current dynamic color style."""
-
-        gui_bg = pygame.Surface((32, 18))
-
-        gui_bg.blit(pygame.image.load(bg_file_path), (0, 0))
-
-        # Create the pixel array
-        pixel_array = pygame.PixelArray(gui_bg)
-
-        # Recolor the pixels
-        pixel_array.replace((0, 0, 0), self.settings.dynamic_colors["bg_dark"])
-        pixel_array.replace((127, 127, 127), self.settings.dynamic_colors["bg_midtone_dark"])
-        pixel_array.replace((195, 195, 195), self.settings.dynamic_colors["bg_midtone_light"])
-        pixel_array.replace((255, 255, 255), self.settings.dynamic_colors["bg_light"])
-
-        # Close the array
-        pixel_array.close()
-
-        return pygame.transform.scale(gui_bg, self.settings.render_surface_size)
-
     def _init_topic_sidebar(self):
         """Initializes the topic sidebar for rendering."""
         self.fill_sidebar_topics()
@@ -122,16 +100,12 @@ class GUIAdventureScreen:
         # If the event is a choice now is the time to display the option buttons.
         if "choice" in self.event_parser.current_event.commands:
             # Calculate the spacing for the choice buttons
-            button_vertical_spacing = self.response_pane_rect.height / (
-                    1 + len(self.event_parser.current_event.choices))
-            button_vertical_offset = button_vertical_spacing
+            button_vertical_offset = 0
 
             # Create all the choice buttons, placing them and incrementing the offset
             for each_choice in self.event_parser.current_event.choices.keys():
-                ChoiceButton(self, (
-                    self.response_pane_rect.centerx, self.response_pane_rect.top + button_vertical_offset),
-                             each_choice)
-                button_vertical_offset += button_vertical_spacing
+                this_choice = ChoiceButton(self, (self.response_pane_rect.left, self.response_pane_rect.top + button_vertical_offset), each_choice)
+                button_vertical_offset += this_choice.image.get_height() + self.settings.paragraph_tab_width/2
 
         # If the event has the silent command, skip placing the button
         elif "silent" in self.event_parser.current_event.commands:
@@ -214,8 +188,16 @@ class GUIAdventureScreen:
         if self.is_writing_text and not self.words:
             self.words = self.event_parser.current_event.text.split()
 
+            # Check if the scene style has changed, if so, update the bg image and wipe the text box
+            if self.event_parser.scene_style != self.settings.current_style_name:
+                self.settings.current_style_name = self.event_parser.scene_style
+                self.settings.dynamic_colors = self.settings.get_dynamic_colors(self.event_parser.scene_style)
+
+                self.gui_bg = self.init_bg_surface("images/gui/debug_gui_winbg.png")
+                self._wipe_rolling_textbox()
+
             # Wipe the rolling text box before writing if the event has the wipe command.
-            if "wipe" in self.event_parser.current_event.commands:
+            elif "wipe" in self.event_parser.current_event.commands:
                 self._wipe_rolling_textbox()
 
             # If unwiped, you may have to clear up old unpicked up items
@@ -290,6 +272,9 @@ class GUIAdventureScreen:
                 if next_word_truncated == each_topic.title.lower() or next_word_truncated in each_topic.aliases:
                     return TopicSprite(next_word, each_topic, self, self.rolling_text_clickable_topics_group), next_word
 
+            # If the topic cannot be found, return something anyway
+            return None, next_word
+
         # Check if the next word is an item which will be enclosed in {_}
         elif "{" in expression:
             # Check if the word needs to be extended to find the rest of the topic.
@@ -353,6 +338,28 @@ class GUIAdventureScreen:
         self.redraw_buttons()
         self.redraw_sidebar_topics()
         self.redraw_header()
+
+    def init_bg_surface(self, bg_file_path):
+        """Takes a filepath and returns the gui_bg surface loaded from that path,
+        colored to match the current dynamic color style."""
+
+        loaded_image = pygame.image.load(bg_file_path)
+        gui_bg = pygame.Surface(loaded_image.get_size())
+        gui_bg.blit(loaded_image, (0, 0))
+
+        # Create the pixel array
+        pixel_array = pygame.PixelArray(gui_bg)
+
+        # Recolor the pixels
+        pixel_array.replace((0, 0, 0), self.settings.dynamic_colors["bg_dark"])
+        pixel_array.replace((64, 64, 64), self.settings.dynamic_colors["bg_midtone_dark"])
+        pixel_array.replace((128, 128, 128), self.settings.dynamic_colors["bg_midtone_light"])
+        pixel_array.replace((255, 255, 255), self.settings.dynamic_colors["bg_light"])
+
+        # Close the array
+        pixel_array.close()
+
+        return pygame.transform.scale(gui_bg, self.settings.render_surface_size)
 
     def add_to_sidebar_topics(self, topic_object):
         """Adds the given topic object to the sidebar as a topic sprite."""
@@ -482,15 +489,18 @@ class TopicSprite(gui.Button):
         self.topic = topic_object
         self.gui = gui_object
 
+        self.bold = self.gui.is_bold
+        self.italics = self.gui.is_italics
+
         super().__init__(gui_object.settings, *topic_groups)
 
     def _init_image(self):
         """Draws the image for the button and saves it as the self.image."""
         if self.topic.is_known_topic:
-            self.image = self.settings.render_text_body_font(self.text, self.settings.dynamic_colors["topic_known"], self.gui.is_italics, self.gui.is_bold)
+            self.image = self.settings.render_text_body_font(self.text, self.settings.dynamic_colors["topic_known"], self.italics, self.bold)
         else:
             self.image = self.settings.render_text_body_font(self.text, self.settings.dynamic_colors["topic_unknown"],
-                                                             self.gui.is_italics, self.gui.is_bold)
+                                                             self.italics, self.bold)
     def draw(self, target_surface):
         """Draws the rendered topic to the surface"""
         self._init_image()
@@ -652,16 +662,64 @@ class ContinueButton(gui.Button):
             self.gui.event_parser.get_next_event()
 
 
-class ChoiceButton(ContinueButton):
+class ChoiceButton(gui.Button):
     """A choice button for making choices presented by the script."""
-    def __init__(self, parent_gui, center_position, choice_text):
+    def __init__(self, parent_gui, position, choice_text):
+        self.gui = parent_gui
+
         self.text = choice_text
-        super().__init__(parent_gui, center_position)
+        super().__init__(self.gui.settings, self.gui.buttons_group, position=position)
 
     def _render_text(self):
-        # Render the text that is the base of the button shape
-        rendered_text = self.settings.font_UI_text.render(self.text, True, self.settings.dynamic_colors["body_text"], self.settings.dynamic_colors["bg_midtone_light"])
-        return rendered_text, rendered_text.get_rect()
+        """Renders the button text. Will break lines too long for the response pane."""
+        word_list = self.text.split()
+        lines_to_render = []
+
+        # Build a series of properly measured strings and store them
+        while word_list:
+            this_line = word_list.pop(0)
+
+            while word_list:
+                if self.settings.font_UI_text.size(f"{this_line} {word_list[0]}")[0] + self.settings.paragraph_tab_width < self.gui.response_pane_rect.width:
+                    this_line += " " + word_list.pop(0)
+                else:
+                    break
+
+            lines_to_render.append(this_line)
+
+        # Render each string and store them all.
+        text_surfaces = []
+        height = 0
+        width = 0
+
+        for each_string in lines_to_render:
+            text_surfaces.append(self.settings.font_UI_text.render(each_string, True, self.settings.dynamic_colors["body_text"], self.settings.dynamic_colors["transparency"]))
+            height += text_surfaces[-1].get_height()
+            if text_surfaces[-1].get_width() > width:
+                width = text_surfaces[-1].get_width()
+
+
+        # Stitch all of the surfaces together.
+        rendered_text = pygame.Surface((width, height))
+        rendered_text.fill(self.settings.dynamic_colors["transparency"])
+
+        height = 0
+
+        for each_surface in text_surfaces:
+            rendered_text.blit(each_surface, (0, height))
+            height += each_surface.get_height()
+
+        return rendered_text
+
+    def _init_image(self):
+        """Calls the text render, then draws the border. Sets up self.image for rendering."""
+        text_surface = self._render_text()
+
+        self.image = pygame.Surface((text_surface.get_width() + 4, text_surface.get_height() + 4))
+        self.image.fill(self.settings.dynamic_colors["bg_midtone_dark"])
+        self.image.blit(text_surface, (2, 2))
+
+        self.image.set_colorkey(self.settings.dynamic_colors["transparency"])
 
     def on_click(self):
         """Starts the chosen event from the parser's event list. Sets the necessary flags."""
@@ -737,7 +795,7 @@ if __name__ == "__main__":
     try:
         new_panel = GUIAdventureScreen(controller_object, settings_object, character_object, "scenes/INTRO.scn")
     except FileNotFoundError:
-        new_panel =GUIAdventureScreen(controller_object, settings_object, character_object)
+        new_panel = GUIAdventureScreen(controller_object, settings_object, character_object)
 
     while True:
         new_panel.update()

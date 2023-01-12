@@ -1,3 +1,11 @@
-DEBUG topic,"debug, debugger",The de-bugger.,is_known
-topics,"topic, topics","When you click on a topic like this one, it is added to your topic list.",
+GENERIC_TOPICS,generictopics,"The /b GENERIC_TOPICS / are loaded from the topics.csv into the scene directly. They do not need any more support to function. Topics not included can still be clicked, their generic response played once, and they will be added to the list. But like all other topics not in the .scn or it's generic topics list, they will be grayed out for the remainder of the scene.",
+choices,"choice, choices","Choices allow the player to control the flow of the game by presenting them options to choice from, and directing the scene based on their choices.",
+commands,"command, commands",Many different types of commands can be passed to events to change how they function. You will learn about all of them in other parts of the tutorial.,
+Event ID,,"A string unique to this scene file, not overlapping with any of the topic names, used to represent this event and target it with scene flow commands.",
+HEADER,header,"The /b HEADER / exists to tell the .scn file what the title of the scene is, and where the scene should start.",
+Next ID,,"The Event ID of the event that should follow this one. If left blank, it will default to the next event in the file.",
 other topics,,This should not appear in the tutorial.,
+STYLE,style,The /b STYLE / tells the game which of the styles in the styles.csv should be used for this scene.,
+text,the text,This is the text that the event will print when it runs.,
+topics,"topic, topics","When you click on a topic like this one, it is added to your topic list and its response is played. Topics active in this scene can be clicked in the sidebar to replay their response. Topics brought from other scenes may have different responses in other scenes, allowing a sort of topic based ""exploration"".",
+disabled topic,,"This topic can only be clicked because it appeared in the text, you will see that it is disabled in the sidebar. That's because it's only /i sort of / in this scene.",is_known

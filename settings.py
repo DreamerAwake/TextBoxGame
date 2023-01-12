@@ -1,5 +1,4 @@
 import csv
-
 import pygame
 
 import mypyg
@@ -13,7 +12,7 @@ class Settings:
                                      (1920, 1080),
                                      (1280, 720),
                                      (854, 480)]
-        self.screen_surface_size = (1280, 720)
+        self.screen_surface_size = (1920, 1080)
         self.render_surface_size = (2560, 1440)
         self.display_surface = pygame.display.set_mode(self.screen_surface_size)
 
@@ -27,13 +26,14 @@ class Settings:
         self.font_text_small_caps = pygame.font.SysFont("sourcesanspro", 28)
         self.font_UI_text = pygame.font.SysFont("nirmalaui", 36)
 
-        self.paragraph_tab_width = 100
-        self.paragraph_spacing_below = 20
+        self.paragraph_tab_width = 50
+        self.paragraph_spacing_below = 10
 
         # Color Settings
         self.color_styles, self.color_keys = self._init_color_styles("scenes/styles.csv")
 
-        self.dynamic_colors = self.get_dynamic_colors("DEFAULT")
+        self.current_style_name = "DEFAULT"
+        self.dynamic_colors = self.get_dynamic_colors(self.current_style_name)
 
     def _init_color_styles(self, styles_filename):
         """Reads the style colors from the .csv into the game."""
@@ -71,7 +71,7 @@ class Settings:
         """Returns a dict of dynamic colors for use by the rendering pipeline. Styles can be swapped by
         passing a new color_style and assigning settings.dynamic_colors to the resulting dict."""
         dynamic_color_dict = {}
-
+        print(color_style)
         # Set each key in the color_keys to a pygame color of the corresponding tuple
         for each_key, each_color_tuple in zip(self.color_keys, self.color_styles[color_style]):
             dynamic_color_dict[each_key] = pygame.Color(each_color_tuple)
