@@ -1,0 +1,3 @@
+DEBUG topic,"debug, debugger",The de-bugger.,is_known
+topics,"topic, topics","When you click on a topic like this one, it is added to your topic list.",
+other topics,,This should not appear in the tutorial.,

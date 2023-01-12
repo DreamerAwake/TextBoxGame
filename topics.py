@@ -19,6 +19,7 @@ class Topic:
 
         return scene_parser.SceneEvent(this_event, 0)
 
+
 def init_topics(topic_filename):
     """Initialize a list of all topics. Any new topics MUST
     be added to this list or they will not appear anywhere in the game."""

@@ -1,4 +1,8 @@
+import csv
+
 import pygame
+
+import mypyg
 
 
 class Settings:
@@ -27,39 +31,63 @@ class Settings:
         self.paragraph_spacing_below = 20
 
         # Color Settings
-        self.colors = {"transparency": pygame.Color(255, 255, 255),
-                       "black": pygame.Color(10, 10, 10),
-                       "gray": pygame.Color(128, 128, 128),
-                       "white": pygame.Color(250, 250, 250),
-                       "red": pygame.Color(210, 20, 20),
-                       "orange": pygame.Color(210, 90, 10),
-                       "yellow": pygame.Color(240, 190, 20),
-                       "green": pygame.Color(10, 128, 10),
-                       "light blue": pygame.Color(110, 160, 250),
-                       "dark blue": pygame.Color(60, 80, 128),
-                       "indigo": pygame.Color(128, 20, 240),
-                       "pink": pygame.Color(240, 20, 240)
-                       }
+        self.color_styles, self.color_keys = self._init_color_styles("scenes/styles.csv")
 
-        self.dynamic_colors = {"header_text": self.colors["dark blue"],
-                               "body_text": self.colors["black"],
-                               "character_tag": self.colors["dark blue"],
-                               "topic_unknown": self.colors["orange"],
-                               "topic_known": self.colors["light blue"],
-                               "inline_item": self.colors["green"],
-                               "dull_text": self.colors["gray"],
-                               }
+        self.dynamic_colors = self.get_dynamic_colors("DEFAULT")
+
+    def _init_color_styles(self, styles_filename):
+        """Reads the style colors from the .csv into the game."""
+        retrieved_color_styles = {}
+        retrieved_color_keys = []
+
+        with open(styles_filename, newline='', encoding='UTF-8') as stylefile:
+            style_csv_reader = csv.reader(stylefile)
+
+            for each_line in style_csv_reader:
+
+                # Read the line with the dynamic color keys
+                if not retrieved_color_keys:
+
+                    each_line.pop(0)  # Corrects for the style name column
+
+                    for each_key in each_line:
+                        retrieved_color_keys.append(each_key)
+
+                # Read the style lines
+                else:
+                    this_style_name = each_line.pop(0)
+                    this_style = []
+
+                    for each_color in each_line:
+                        each_color = mypyg.remove_character(each_color, remove_non_alphanumeric=True).split()
+                        color_tuple = (int(each_color[0]), int(each_color[1]), int(each_color[2]))
+                        this_style.append(color_tuple)
+
+                    retrieved_color_styles[this_style_name] = this_style
+
+        return retrieved_color_styles, retrieved_color_keys
+
+    def get_dynamic_colors(self, color_style):
+        """Returns a dict of dynamic colors for use by the rendering pipeline. Styles can be swapped by
+        passing a new color_style and assigning settings.dynamic_colors to the resulting dict."""
+        dynamic_color_dict = {}
+
+        # Set each key in the color_keys to a pygame color of the corresponding tuple
+        for each_key, each_color_tuple in zip(self.color_keys, self.color_styles[color_style]):
+            dynamic_color_dict[each_key] = pygame.Color(each_color_tuple)
+            print(each_key, dynamic_color_dict[each_key])
+
+        return dynamic_color_dict
 
     def render_text_body_font(self, text, color, italics, bold):
         """Calls renders from text_body_font adjusting for italics and bolds as necessary.
         Returns the rendered text surface."""
 
         if bold:
-            render = self.font_text_body_bold.render(text, True, color, self.colors["transparency"])
+            render = self.font_text_body_bold.render(text, True, color, self.dynamic_colors["transparency"])
         elif italics:
-            render = self.font_text_body_italics.render(text, True, color, self.colors["transparency"])
+            render = self.font_text_body_italics.render(text, True, color, self.dynamic_colors["transparency"])
         else:
-            render = self.font_text_body.render(text, True, color, self.colors["transparency"])
-
+            render = self.font_text_body.render(text, True, color, self.dynamic_colors["transparency"])
 
         return render

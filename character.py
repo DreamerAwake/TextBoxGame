@@ -7,7 +7,7 @@ class CharacterProfile:
     """The container for all of the player's stats, progress and inventory."""
     def __init__(self):
         # Lists of various collections
-        self.topics = topics.init_topics("topics.csv")
+        self.topics = topics.init_topics("scenes/topics.csv")
         self.inventory = Inventory()
 
 
@@ -22,7 +22,7 @@ class Inventory:
         This becomes the player's bag going forward."""
         bag = {}
 
-        with open("items.csv", newline='') as itemsfile:
+        with open("scenes/items.csv", newline='') as itemsfile:
             items_csv_reader = csv.reader(itemsfile)
             for each_line in items_csv_reader:
 

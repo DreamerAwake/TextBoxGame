@@ -1,5 +1,6 @@
 GUI
-- Reorganize reader GUI
+- STYLE settings
+
 
 Scene Processing
-- STYLE settings
+-

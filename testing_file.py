@@ -1,6 +1,7 @@
-if __name__ == "__main__":
-    import pygame
-    fonts = pygame.font.get_fonts()
+import csv
 
-    for each_font in fonts:
-        print(each_font)
+if __name__ == "__main__":
+    with open("items.csv", newline='', encoding='UTF-8') as stylefile:
+        style_csv_reader = csv.reader(stylefile)
+
+        style_csv_reader.pop(0)

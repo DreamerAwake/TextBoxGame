@@ -1,58 +1,57 @@
-HEADER,This Is the Scene Title - I Like Dashes,Dialogue005,
-GENERIC_TOPICS,,,
+HEADER,An Example - The Modding Tutorial,StartAtThisEvent,
+GENERIC_TOPICS,topics,,
 STYLE,,,
-StartAtThisEvent,"The HEADER is required, it gives the scene a title, and its 3rd column determines where the scene starts.",NextGoHere,
-NextGoHere,Events will automatically progress to the next event if they have no target.,,
-Next,"For a normal event, the 1st column is the Event ID, the 2nd is the text content, the 3rd is the Event ID of the next event to play, and the 4th column contains any Event Commands.",,
-Next001,"Choices let you change the flow of the game. Any rows without an Event ID immediately following a choice command become that Event’s choices. Each choice has its own target, placed in the third column as usual.",,choice
-,"This Choice,",Next002,
-,"And this Choice go to the same place, the next event.",Next002,
-,"But, this one takes you back to the beginning.",StartAtThisEvent,
-Next002,"This event has the wipe Command. It clears the rolling text log. Do this periodically to separate scenes, for aesthetic reasons, and because the text box should only get so big",,wipe
-Next003,"Choices are often used with marks and returns. If you leave a mark it will sit in a list; this list can be added to endlessly. The next return will bounce you to the last marked event and clear it. Keep in mind, that a marked event will mark itself again, pass it clear_marks or forget_mark to either clear all marks, or just the last mark, respectively.",,
-Next004,"Marks without the reread Command will suppress reprinting their text when returned to. Reread commands like this one make chat clutter, but make it clearer where in the conversation flow the character is.",,choice mark reread
-,This choice will take you to an event with a return.,ReturningEvent001,
-,This choice takes you to an event with a clear_marks.,ReturningEvent002,
-,This choice takes you to an event with a forget_mark.,ReturningEvent003,
-ReturningEvent001,"This event has the return Event ID as a target, it will bounce you back to the last mark, which in this case is the choice event.",return,
-ReturningEvent002,"This event has clear_marks, it will just completely clear the marks list. Best practice between scenes to do this.",Dialogue001,clear_marks
-ReturningEvent003,"This event has forget_mark, it will clear the last mark, allowing you to find earlier marks. Useful for larger dialogue trees.",Dialogue001,forget_mark
-Dialogue001,"“This is dialogue.” The tutorial says. “It has a character tag in the commands, which must come first and be enclosed in brackets.”",,[Tutorial]
-Dialogue002,"“Dialogue will often present you with <topics> which you can learn by clicking on them. But, they have to be enabled before they will work, with the enable_topics command.” Topics are nice, the tutorial thinks, because they will set a mark automatically, so that they can be returned from easily.",,[Tutorial] enable_topics
-Dialogue003,"However, topics are only enabled as long as you have the enable_topics Command in that event. They will not be persistently enabled.",,
-Dialogue004,"Topics might be disabled if there is no response for them in the current scene. But if a topic appears in a scene, it needs to have some sort of response there.",,[Tutorial] enable_topics
-Dialogue005,"“You can spice up dialogue using inline expressions, too.” /i The tutorial explains. / “Using ‘/i’ or ‘/b’ will give you /i italic / text and /b bold / text, respectively. Then, adding ‘/’ will end all current font effects. This is /b important / for writing scenes that feel good to read and have weight.",,
-Items001,"You can give the player items with the give_item(item_name,quantity) command.",,choice
-,Click here to get 1 gold.,Items002,
-,Click here to move on.,Items003,
-Items002,“You got one gold!”,Items004,"[Tutorial] give_item(Gold,1)"
-Items003,“You decided not to take the gold.”,,[Tutorial]
-Items004,"Later on you can check for items with check_item(item_name,quantity_needed,pass_event_ID,fail_event_ID). If the player has the specified quantity of items or more, then they move to the pass event, otherwise, they go to the fail event. because of this, check_item is treated as a target event_ID, not a regular command.","check_item(Gold,1,Items005,Items006)",
-Items005,You had enough gold to pass this check!,Items007,
-Items006,You did not have enough gold to pass this check.,Items007,
-Items007,"Then, you see {something shiny,Gold,1} laying on the ground.",,
-Items008,"The shiny thing is Gold, and you can pick it up by clicking on it.",,
-Items009,"At this point if you haven’t grabbed it, its gone. This event has the clean_up_items command, which makes ungrabbed items disappear.",,clean_up_items
-Checks001,"Here, have some gold, just for being a cool dude.",,choice mark reread
-,"Okay, gimmie.",Checks002,
-,"No, no gold for me thanks.",Checks003,
-Checks002,You got 5 gold!,Checks004,"give_item(Gold,5)"
-Checks003,"Okay, fine, be that way.",Checks004,
-Checks004,"You can also roll random checks with check_roll(difficulty,range,pass_event_ID,fail_event_ID, optional_item_modifier)","check_roll(10,12,Checks005,Checks006,Gold)",
-Checks005,"You have passed the check, you were either lucky or had a lot of gold.",Checks007,
-Checks006,"You failed the check, understandably.",Checks007,
-Checks007,Would you like to go back for more gold and try again?,,choice
-,"Yes, please.",return,
-,"No, thanks.",Silence001,
-Silence001,You can make an event suppress its button and simply play the next line.,,clear_marks
-Silence002,"For example this one,",,silent
-Silence003,leads,,silent
-Silence004,right,,silent
-Silence005,into,,silent
-Silence006,this one.,,
-Silence007,This is useful for scene flow.,,
-EndOfExample,"Always make sure your last event points to somewhere, or it will run over into your topics or cause a crash.",,choice
-,Click here to go back to the beginning.,StartAtThisEvent,
-,Click here to learn about Dialogue again.,Dialogue001,
-,Click here to be offered some gold again.,Items001,
-topics,"Topics like this are the bread and butter of this game, you will need to find many of them in order to progress.",return,
+StartAtThisEvent,This tutorial can show you everything you need to know about the game.,,choice wipe
+,Click here to learn about the .scn files used to write scenes.,Scene001,
+,Click here to learn about Scene Flow.,Choices001,
+,Click here to learn about Dialogue and Topics.,Dialogue001,
+,Click here to learn about Items.,Items001,
+Scene001,Scene files used by this game are .csv files (essentially just spreadsheets) renamed to .scn for sorting purposes.,,
+Scene002,"Scene files have four columns, and each row contains either a stage direction or an event.",,
+Scene003,Stage directions always appear in the top rows of the file. The first column contains the name of the direction in ALL CAPS.,,
+Scene004,"The first stage direction is the /b HEADER. / The 2nd column of the header gives the text displayed at the top of the screen while the scene plays out, usually a title. The 3rd column gives the Event ID of the first event that this script will run.",,
+Scene005,"The second stage direction is /b GENERIC_TOPICS. / You will learn more about this direction in the section on topics. But simply put, the second column of this direction will usually have a list of topic names, like it does in this file.",,
+Scene006,"After all of the stage directions, events begin. The contents of an event's columns are as follows:",,silent
+Scene007,"1. The Event ID, a string unique to this scene file, not overlapping with any of the topic names, used to represent this event and target it with scene flow commands.",,silent
+Scene008,2. The text. This is the text that the event will print when it runs.,,silent
+Scene009,"3. The Next ID. The Event ID of the event that should follow this one. If left blank, it will default to the next event in the file.",,silent
+Scene010,4. Commands. Many different types of commands can be passed to events to change how they function. You will learn about all of them in other parts of the tutorial.,StartAtThisEvent,
+Choices001,"You just passed through a Choice. Choices let you control the flow of the game by letting the player respond, and well, make choices.",,mark reread
+Choices002,"Choices are given the /i choice / command, and are followed in the .cvs file by several events with no Event IDs.",,
+Choices003,"The text of these Events becomes the wording used on their choice button, and their Next ID becomes the target event after they are picked.",,
+Choices004,Choices are often used with /i mark / and /i return. / For example:,,choice
+,Click here to go back to the mark at the beginning of this section on choices.,Choices005,
+,"Click here to move on, and forget_mark, so that just the last mark in the list is wiped.",Choices006,
+,"Click here to move on, and clear_marks, so that all of the current marks are disposed of.",Choices007,
+Choices005,"This event has /i return, / so it will take you back to the last mark. That mark also happens to have the /i reread / command, so when you get there, it will reread itself. Normally, after a /i return / the event would run without displaying its text.",return,
+Choices006,"This event has /i forget_mark, / so now that previous mark we left is gone.",Choices008,forget_mark
+Choices007,"This event has /i clear_marks, / so now all the previous marks are gone.",Choices008,clear_marks
+Choices008,Now you know how choices and basic eventflow work.,StartAtThisEvent,
+Dialogue001,"""Dialogue usually has a /i character tag / in the commands. Character tags are set in brackets ""[ ]"" to give the player a idea of who is speaking.""",,[Tutorial]
+Dialogue002,"""Text can be /b bolded / with ""/b"" and /i italicized / with ""/i"". Font formatting like this can be wiped by writing ""/"".",,
+Dialogue003,"""Often times dialogue will be the way that your charcter learns <topics>. A <topic> can be added to the .scn file by enclosing the topic title or any of its aliases (as defined in the topics.csv), in carets."" ",,[Tutorial] enable_topics
+Dialogue004,"""<Topics> can only be interacted with while an event with /i enable_topics / is active.""",,[Tutorial] enable_topics
+Dialogue005,"For example, right now, no topics are active.",,
+Dialogue006,"But, now they are again.",,enable_topics
+Dialogue007,"""The <topic> you have now is using the /b GENERIC_TOPICS / response defined in its topic file. But, <other topics> like this one can appeal to a special topic set per scene. To do this, simply add an event to the .scn file that has an Event ID that is identical to the topic's title.""",,[Tutorial] enable_topics
+Dialogue008,"""When you click on a <topic>, the game automatically sets a /i mark / so you can /i return / later on to the place where you were before you remarked on the <topic>. If you don't want this to happen, simply place a /i forget_mark / on the topic event.""",,[Tutorial] enable_topics
+Dialogue009,"""If a <topic> is not in /b GENERIC_TOPICS / and doesn't appear in the .scn file, it can still appear in text. Like this <debugger>, which you can click on even though it doesn't appear anywhere in the file. When you do, it will read out its generic response, but it will also not be available otherwise in the scene. It will appear in the topic list grayed out to signify it is unclickable.""",,[Tutorial] enable_topics
+Dialogue010,"""Any <topic> not in the /b GENERIC_TOPICS / list, and not in the events list of the .scn will only be accessable if written directly into the text. Otherwise such topics are unavailable in those scenes.""",StartAtThisEvent,[Tutorial] enable_topics
+Items001,"You can give the player items with /i give_item(item_name,quantity). / ",,
+Items002,"For example, would you like a coin?",,choice
+,Yes,Items003,
+,No,Items004,
+Items003,/i * You got 1 Coin * /,Items005,"silent give_item(Coin,1)"
+Items004,/i * You got nothing... * /,Items005,silent
+Items005,"Later on you can check for items with /i check_item(item_name,quantity_needed,pass_event_ID,fail_event_ID). / If the player has the specified quantity of items or more, then they move to the pass event, otherwise, they go to the fail event. because of this, /i check_item / is treated as a Next ID, not a regular command.","check_item(Coin,1,Items006,Items007)",
+Items006,"You took the coin, so you have passed the check.",Items008,
+Items007,"You didn't take the coin, so you failed the check.",Items008,
+Items008,"""Now here, {catch!,Coin,1} """,,[Tutorial]
+Items009,"If you didn't catch it, now is too late. That was an /i inline item, / another coin, like the other one we gave you. It's gone now because the /i clean_up_items / command has run.",,clean_up_items
+Items010,"""Lets try again. {Catch!,Coin,1} """,,[Tutorial]
+Items011,Now we can check how rich you've been getting with a little gambling.,,clean_up_items
+Items012,We'll roll a six-sided dice and add the number of Coins you've collected. You need a 6 or better to pass.,,
+Items013,Rolling!,"check_roll(6,6,Items014,Items015,Coin)",silent
+Items014,You passed! You either got very lucky or you were collecting coins.,StartAtThisEvent,
+Items015,"You failed. Don't feel bad, without coins, you only have a 1 in 6 chance.",StartAtThisEvent,
+other topics,"""See! In the topic file, this topic has different event text than this one. This means that you can change responses to topics based on who the character is talking to and what they are doing in that moment.""",return,[Tutorial]

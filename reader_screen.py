@@ -1,6 +1,6 @@
 import random
-
 import pygame
+
 import mypyg
 import scene_parser
 import controls
@@ -27,16 +27,16 @@ class GUIAdventureScreen:
 
         # Initialize the rect for the topic sidebar
         self.sidebar_topics_rect = self.sidebar_topics_surface.get_rect()
-        self.sidebar_topics_rect.topleft = (self.settings.render_surface_size[0] * 0.76, self.settings.render_surface_size[1] * 0.08)
+        self.sidebar_topics_rect.topleft = (self.settings.render_surface_size[0] * 0.83, self.settings.render_surface_size[1] * 0.08)
 
         # Initialize the rect for the main text box
         self.rolling_textbox_rect = self.rolling_text_surface.get_rect()
         self.rolling_textbox_focus_rect = self.rolling_textbox_rect.copy()
-        self.rolling_textbox_rect.topleft = (self.settings.render_surface_size[0] * 0.35, self.settings.render_surface_size[1] * 0.08)
+        self.rolling_textbox_rect.topleft = (self.settings.render_surface_size[0] * 0.01, self.settings.render_surface_size[1] * 0.08)
 
-        # Initialize the rect for the bottom response pane
-        self.response_pane_rect = pygame.Rect((self.settings.render_surface_size[0] * 0.34, self.settings.render_surface_size[1] * 0.80),
-                                              (self.settings.render_surface_size[0] * 0.66, self.settings.render_surface_size[1] * 0.20))
+        # Initialize the rect for the middle response pane
+        self.response_pane_rect = pygame.Rect((self.settings.render_surface_size[0] * 0.5, self.settings.render_surface_size[1] * 0.08),
+                                              (self.settings.render_surface_size[0] * 0.29, self.settings.render_surface_size[1] * 0.61))
 
         # Initialize the rect for the header pane
         self.header_rect = self.header_surface.get_rect()
@@ -58,27 +58,49 @@ class GUIAdventureScreen:
     def _init_surfaces(self):
         """Initializes and returns the surfaces needed by the constructor."""
         # BG image for the GUI pane
-        gui_bg = pygame.transform.smoothscale(pygame.image.load("images/gui/adventure_screen_winbg.png"), self.settings.render_surface_size)
+        gui_bg = self._init_bg_surface("images/gui/debug_gui_winbg.png")
 
         # The primary render surface for this GUI pane
         render_surface = gui_bg.copy()
 
         # The surface for the topic-selector sidebar
-        sidebar_topics_surface = pygame.Surface((self.settings.render_surface_size[0] * 0.23, self.settings.render_surface_size[1] * 0.71))
-        sidebar_topics_surface.fill(self.settings.colors["transparency"])
-        sidebar_topics_surface.set_colorkey(self.settings.colors["transparency"])
+        sidebar_topics_surface = pygame.Surface((self.settings.render_surface_size[0] * 0.16, self.settings.render_surface_size[1] * 0.71))
+        sidebar_topics_surface.fill(self.settings.dynamic_colors["transparency"])
+        sidebar_topics_surface.set_colorkey(self.settings.dynamic_colors["transparency"])
 
         # The surface for the main text box
         rolling_text_surface = pygame.Surface((self.settings.render_surface_size[0] * 0.39, self.settings.render_surface_size[1] * 0.71))
-        rolling_text_surface.fill(self.settings.colors["transparency"])
-        rolling_text_surface.set_colorkey(self.settings.colors["transparency"])
+        rolling_text_surface.fill(self.settings.dynamic_colors["transparency"])
+        rolling_text_surface.set_colorkey(self.settings.dynamic_colors["transparency"])
 
         # The surface for the scene title header
         header_surface = pygame.Surface((self.settings.render_surface_size[0] * 0.98, self.settings.render_surface_size[1] * 0.07))
-        header_surface.fill(self.settings.colors["transparency"])
-        header_surface.set_colorkey(self.settings.colors["transparency"])
+        header_surface.fill(self.settings.dynamic_colors["transparency"])
+        header_surface.set_colorkey(self.settings.dynamic_colors["transparency"])
 
         return gui_bg, render_surface, sidebar_topics_surface, rolling_text_surface, header_surface
+
+    def _init_bg_surface(self, bg_file_path):
+        """Takes a filepath and returns the gui_bg surface loaded from that path,
+        colored to match the current dynamic color style."""
+
+        gui_bg = pygame.Surface((32, 18))
+
+        gui_bg.blit(pygame.image.load(bg_file_path), (0, 0))
+
+        # Create the pixel array
+        pixel_array = pygame.PixelArray(gui_bg)
+
+        # Recolor the pixels
+        pixel_array.replace((0, 0, 0), self.settings.dynamic_colors["bg_dark"])
+        pixel_array.replace((127, 127, 127), self.settings.dynamic_colors["bg_midtone_dark"])
+        pixel_array.replace((195, 195, 195), self.settings.dynamic_colors["bg_midtone_light"])
+        pixel_array.replace((255, 255, 255), self.settings.dynamic_colors["bg_light"])
+
+        # Close the array
+        pixel_array.close()
+
+        return pygame.transform.scale(gui_bg, self.settings.render_surface_size)
 
     def _init_topic_sidebar(self):
         """Initializes the topic sidebar for rendering."""
@@ -87,9 +109,9 @@ class GUIAdventureScreen:
 
     def _render_header_surface(self):
         """Renders the header surface with the header text."""
-        self.header_surface.fill(self.settings.colors["transparency"])
+        self.header_surface.fill(self.settings.dynamic_colors["transparency"])
 
-        rendered_text = self.settings.font_heading_1.render(self.event_parser.current_event_header, True, self.settings.dynamic_colors["header_text"], self.settings.colors["transparency"])
+        rendered_text = self.settings.font_heading_1.render(self.event_parser.current_event_header, False, self.settings.dynamic_colors["header_text"], self.settings.dynamic_colors["transparency"])
         rendered_text_rect = rendered_text.get_rect()
         rendered_text_rect.centery = self.header_rect.height * 0.5
 
@@ -118,7 +140,14 @@ class GUIAdventureScreen:
             self.is_writing_text = True
             self.controller.disable()
 
-            self.event_parser.get_next_event()
+            # See if we should give the player items
+            give_items(self.event_parser.current_event, self.character.inventory)
+
+            # See if we have checks to run
+            if not run_item_checks(self.event_parser, self.character.inventory) and not \
+                    run_roll_checks(self.event_parser, self.character.inventory):
+
+                self.event_parser.get_next_event()
 
             return None  # Used to skip the last block of code in the function, which normally does the opposite of this
 
@@ -138,7 +167,7 @@ class GUIAdventureScreen:
             # Create the render and the rects
             title_text_render = self.settings.font_text_small_caps.render(title_text_string, True,
                                                                           self.settings.dynamic_colors["character_tag"],
-                                                                          self.settings.colors["transparency"])
+                                                                          self.settings.dynamic_colors["transparency"])
             title_text_rect = title_text_render.get_rect()
             title_text_rect.left = 0
             title_text_rect.centery = self.last_placed_text_rect.centery
@@ -240,7 +269,10 @@ class GUIAdventureScreen:
         elif expression == "/":
             self.is_bold = False
             self.is_italics = False
-            expression = self.words.pop(0)
+            try:
+                expression = self.words.pop(0)
+            except IndexError:
+                expression = ""
 
         # Readjust next_word
         next_word = expression
@@ -292,8 +324,8 @@ class GUIAdventureScreen:
 
         # Reset the surface for the main text box
         self.rolling_text_surface = pygame.Surface((self.settings.render_surface_size[0] * 0.39, self.settings.render_surface_size[1] * 0.71))
-        self.rolling_text_surface.fill(self.settings.colors["transparency"])
-        self.rolling_text_surface.set_colorkey(self.settings.colors["transparency"])
+        self.rolling_text_surface.fill(self.settings.dynamic_colors["transparency"])
+        self.rolling_text_surface.set_colorkey(self.settings.dynamic_colors["transparency"])
 
         # Reset variables for the textbox
         self.rolling_textbox_focus_rect.top = 0
@@ -308,8 +340,8 @@ class GUIAdventureScreen:
         if self.last_placed_text_rect.bottom > self.rolling_text_surface.get_height():
             new_rolling_text_surface = pygame.Surface(
                 (self.rolling_text_surface.get_width(), self.last_placed_text_rect.bottom))
-            new_rolling_text_surface.fill(self.settings.colors["transparency"])
-            new_rolling_text_surface.set_colorkey(self.settings.colors["transparency"])
+            new_rolling_text_surface.fill(self.settings.dynamic_colors["transparency"])
+            new_rolling_text_surface.set_colorkey(self.settings.dynamic_colors["transparency"])
             new_rolling_text_surface.blit(self.rolling_text_surface, (0, 0))
             self.rolling_text_surface = new_rolling_text_surface
             self.rolling_textbox_focus_rect.bottom = self.last_placed_text_rect.bottom
@@ -404,7 +436,7 @@ class GUIAdventureScreen:
     def redraw_sidebar_topics(self):
         """Redraws the sidebar containing the player's known topics."""
         self.render_surface.blit(self.gui_bg, self.sidebar_topics_rect, self.sidebar_topics_rect)
-        self.sidebar_topics_surface.fill(self.settings.colors["transparency"])
+        self.sidebar_topics_surface.fill(self.settings.dynamic_colors["transparency"])
         self.sidebar_topics_group.draw(self.sidebar_topics_surface)
         self.render_surface.blit(self.sidebar_topics_surface, self.sidebar_topics_rect)
 
@@ -544,9 +576,9 @@ class SidebarTopicSprite(gui.Button):
     def _init_image(self):
         """Draws the image for the button and saves it as the self.image."""
         if self.is_active:
-            self.image = self.settings.font_UI_text.render(self.text, True, self.settings.dynamic_colors["topic_known"], self.settings.colors["transparency"])
+            self.image = self.settings.font_UI_text.render(self.text, True, self.settings.dynamic_colors["topic_known"], self.settings.dynamic_colors["transparency"])
         else:
-            self.image = self.settings.font_UI_text.render(self.text, True, self.settings.dynamic_colors["dull_text"], self.settings.colors["transparency"])
+            self.image = self.settings.font_UI_text.render(self.text, True, self.settings.dynamic_colors["dull_text"], self.settings.dynamic_colors["transparency"])
 
     def draw(self, target_surface):
         """Draws the rendered topic to the surface"""
@@ -585,7 +617,7 @@ class ContinueButton(gui.Button):
 
     def _render_text(self):
         """Renders the text for the image initializer"""
-        rendered_text = self.settings.font_UI_text.render("Continue", True, self.settings.colors["black"], self.settings.colors["light blue"])
+        rendered_text = self.settings.font_UI_text.render("Continue", True, self.settings.dynamic_colors["body_text"], self.settings.dynamic_colors["bg_midtone_light"])
         return rendered_text, rendered_text.get_rect()
 
     def _init_image(self):
@@ -594,7 +626,7 @@ class ContinueButton(gui.Button):
 
         # Create the button surface and fill it black
         self.image = pygame.Surface((text_rect.width + 20, text_rect.height + 20))
-        self.image.fill(self.settings.colors["black"])
+        self.image.fill(self.settings.dynamic_colors["bg_dark"])
 
         # Move the text rect to the middle of the image.
         text_rect.center = self.image.get_rect().center
@@ -610,39 +642,13 @@ class ContinueButton(gui.Button):
         self.gui.buttons_group.empty()
         self.gui.controller.disable()
 
-        # Check if there is a give_item command
-        if "give_item" in self.gui.event_parser.current_event.commands:
-            self.gui.character.inventory.add(self.gui.event_parser.current_event.give_item_name,
-                                             self.gui.event_parser.current_event.give_item_quantity)
+        # See if we should give the player items
+        give_items(self.gui.event_parser.current_event, self.gui.character.inventory)
 
-        # Check if there is an item_check
-        if self.gui.event_parser.current_event.check_item_quantity:
-            # Run the item check
-            if self.gui.character.inventory.bag[self.gui.event_parser.current_event.check_item_name].stock and \
-                    self.gui.character.inventory.bag[self.gui.event_parser.current_event.check_item_name].stock >= self.gui.event_parser.current_event.check_item_quantity:
-                self.gui.event_parser.get_next_event()
-            else:
-                self.gui.event_parser.get_event_at_ID(self.gui.event_parser.current_event.on_fail_event_ID)
+        # See if we have checks to run
+        if not run_item_checks(self.gui.event_parser, self.gui.character.inventory) and not \
+                run_roll_checks(self.gui.event_parser, self.gui.character.inventory):
 
-        # Check if there is a roll_check
-        elif self.gui.event_parser.current_event.check_roll_difficulty:
-            print("Rolling check")
-            print(f"Difficulty {self.gui.event_parser.current_event.check_roll_difficulty}, Roll Range 1-{self.gui.event_parser.current_event.check_roll_range}")
-            # Run the roll_check
-            random_number = random.randint(1, self.gui.event_parser.current_event.check_roll_range)
-            print(f'Number "on-the-dice": {random_number}')
-            # Add item modifiers
-            try:
-                random_number += self.gui.character.inventory.bag[self.gui.event_parser.current_event.check_item_name].stock
-            except TypeError:
-                pass
-            print(f"Final total: {random_number}")
-            if random_number >= self.gui.event_parser.current_event.check_roll_difficulty:
-                self.gui.event_parser.get_next_event()
-            else:
-                self.gui.event_parser.get_event_at_ID(self.gui.event_parser.current_event.on_fail_event_ID)
-
-        else:
             self.gui.event_parser.get_next_event()
 
 
@@ -654,7 +660,7 @@ class ChoiceButton(ContinueButton):
 
     def _render_text(self):
         # Render the text that is the base of the button shape
-        rendered_text = self.settings.font_UI_text.render(self.text, True, self.settings.colors["black"], self.settings.colors["light blue"])
+        rendered_text = self.settings.font_UI_text.render(self.text, True, self.settings.dynamic_colors["body_text"], self.settings.dynamic_colors["bg_midtone_light"])
         return rendered_text, rendered_text.get_rect()
 
     def on_click(self):
@@ -668,11 +674,70 @@ class ChoiceButton(ContinueButton):
         self.gui.event_parser.get_event_at_ID(self.gui.event_parser.current_event.choices[self.text])
 
 
+def give_items(event, inventory):
+    """Gives the player items based on the event's give_item details.
+    Returns True if there is a give item command, False otherwise."""
+
+    # Check if there is a give_item command
+    if "give_item" in event.commands:
+        # Give the item
+        inventory.add(event.give_item_name, event.give_item_quantity)
+
+
+def run_item_checks(event_parser, inventory):
+    """Checks if the player has the specified number of items to pass the event,
+    or else sends the player to the fail event. Returns True if there is a check event, False otherwise."""
+
+    event = event_parser.current_event
+
+    # Check if there is an item_check
+    if event.check_item_quantity:
+        # Run the item check
+        if inventory.bag[event.check_item_name].stock and inventory.bag[event.check_item_name].stock >= event.check_item_quantity:
+            event_parser.get_next_event()
+            return True
+        else:
+            event_parser.get_event_at_ID(event.on_fail_event_ID)
+            return True
+
+    return False
+
+
+def run_roll_checks(event_parser, inventory):
+    """Runs a random roll for the current event. Returns True if there is a roll event, False otherwise."""
+    event = event_parser.current_event
+
+    # Check if there is a roll_check
+    if event.check_roll_difficulty:
+        print("Rolling check")
+        print(f"Difficulty {event.check_roll_difficulty}, Roll Range 1-{event.check_roll_range}")
+        # Run the roll_check
+        random_number = random.randint(1, event.check_roll_range)
+        print(f'Number "on-the-dice": {random_number}')
+        # Add item modifiers
+        try:
+            random_number += inventory.bag[event.check_item_name].stock
+        except TypeError:
+            pass
+        print(f"Final total: {random_number}")
+        if random_number >= event.check_roll_difficulty:
+            event_parser.get_next_event()
+        else:
+            event_parser.get_event_at_ID(event.on_fail_event_ID)
+
+        return True
+
+    return False
+
+
 if __name__ == "__main__":
     settings_object = settings.Settings()
     character_object = character.CharacterProfile()
     controller_object = controls.Controller(settings_object)
-    new_panel = GUIAdventureScreen(controller_object, settings_object, character_object)
+    try:
+        new_panel = GUIAdventureScreen(controller_object, settings_object, character_object, "scenes/INTRO.scn")
+    except FileNotFoundError:
+        new_panel =GUIAdventureScreen(controller_object, settings_object, character_object)
 
     while True:
         new_panel.update()
