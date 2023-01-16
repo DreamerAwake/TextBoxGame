@@ -27,6 +27,7 @@ class GUIAdventureScreen:
 
         # Initialize the rect for the topic sidebar
         self.sidebar_topics_rect = self.sidebar_topics_surface.get_rect()
+        self.sidebar_focus_rect = self.sidebar_topics_rect.copy()
         self.sidebar_topics_rect.topleft = (self.settings.render_surface_size[0] * 0.83, self.settings.render_surface_size[1] * 0.08)
 
         # Initialize the rect for the main text box
@@ -58,7 +59,7 @@ class GUIAdventureScreen:
     def _init_surfaces(self):
         """Initializes and returns the surfaces needed by the constructor."""
         # BG image for the GUI pane
-        gui_bg = self.init_bg_surface("images/gui/debug_gui_winbg.png")
+        gui_bg = gui.init_bg_surface(self.settings, "images/gui/debug_gui_winbg.png")
 
         # The primary render surface for this GUI pane
         render_surface = gui_bg.copy()
@@ -85,15 +86,11 @@ class GUIAdventureScreen:
         self.fill_sidebar_topics()
         self.sort_sidebar_topics()
 
-    def _render_header_surface(self):
-        """Renders the header surface with the header text."""
-        self.header_surface.fill(self.settings.dynamic_colors["transparency"])
-
-        rendered_text = self.settings.font_heading_1.render(self.event_parser.current_event_header, False, self.settings.dynamic_colors["header_text"], self.settings.dynamic_colors["transparency"])
-        rendered_text_rect = rendered_text.get_rect()
-        rendered_text_rect.centery = self.header_rect.height * 0.5
-
-        self.header_surface.blit(rendered_text, rendered_text_rect)
+    def _clean_up_items(self):
+        """Sets all item topics in the rolling text box to read as already picked up."""
+        for each_sprite in self.rolling_text_clickable_topics_group:
+            each_sprite.is_picked_up = True
+            each_sprite.update()
 
     def _end_event(self):
         """Runs the code that displays buttons at the end of an event."""
@@ -132,108 +129,16 @@ class GUIAdventureScreen:
         self.is_writing_text = False
         self.controller.enable()
 
-    def _write_character_tag(self):
-        """Draws the character tag when applicable. Must be applied before a new line is written."""
-        if not self.event_parser.suppress_text:
-            # Build the string to render
-            title_text_string = self.event_parser.current_event.said_by_character.upper() + " -  "
-
-            # Create the render and the rects
-            title_text_render = self.settings.font_text_small_caps.render(title_text_string, True,
-                                                                          self.settings.dynamic_colors["character_tag"],
-                                                                          self.settings.dynamic_colors["transparency"])
-            title_text_rect = title_text_render.get_rect()
-            title_text_rect.left = 0
-            title_text_rect.centery = self.last_placed_text_rect.centery
-            self.rolling_text_surface.blit(title_text_render, title_text_rect)
-
-            # Move the last placed text rect, but don't copy this one, it is the wrong size
-            self.last_placed_text_rect.right = title_text_rect.right
-
-    def _write_single_word(self):
-        """Draws a single word from the words list for the _write_next_word function."""
-
-        # Establish local variables
-        next_topic, next_word = self._read_inline_expression(self.words.pop(0))
-
-        # Check that we don't need a new line for this word, if we do, adjust self.last_placed_text_rect
-        if self.settings.font_text_body.size(" " + next_word)[0] + self.last_placed_text_rect.right > \
-                self.settings.render_surface_size[0] * 0.39:
-            self.last_placed_text_rect.right = 0
-            self.last_placed_text_rect.top = self.last_placed_text_rect.bottom
-
-            # If the text rect would run off of the rolling box, extend the surface
-            self._extend_rolling_text_surface()
-
-        # Put the next word on the rolling display, using topic functionality if it is a topic and manually otherwise
-        if next_topic:
-            next_topic.rect.left = self.last_placed_text_rect.right + self.settings.font_text_body.size(" ")[0]
-            next_topic.rect.bottom = self.last_placed_text_rect.bottom
-            next_topic.draw(self.rolling_text_surface)
-            self.last_placed_text_rect = next_topic.rect.copy()
-
-        else:
-            this_word_render = self.settings.render_text_body_font(next_word, self.settings.dynamic_colors["body_text"], self.is_italics, self.is_bold)
-            this_word_rect = this_word_render.get_rect()
-            this_word_rect.left = self.last_placed_text_rect.right + self.settings.font_text_body.size(" ")[0]
-            this_word_rect.bottom = self.last_placed_text_rect.bottom
-            self.rolling_text_surface.blit(this_word_render, this_word_rect)
-            self.last_placed_text_rect = this_word_rect
-
-    def _write_next_word(self):
-        """Draw the next word in the rolling text box. Returns False if it is done writing
-        the current scene text and display buttons, True while writing is still ongoing."""
-
-        # Check to see if the current text from the event has been split, split it if not
-        if self.is_writing_text and not self.words:
-            self.words = self.event_parser.current_event.text.split()
-
-            # Check if the scene style has changed, if so, update the bg image and wipe the text box
-            if self.event_parser.scene_style != self.settings.current_style_name:
-                self.settings.current_style_name = self.event_parser.scene_style
-                self.settings.dynamic_colors = self.settings.get_dynamic_colors(self.event_parser.scene_style)
-
-                self.gui_bg = self.init_bg_surface("images/gui/debug_gui_winbg.png")
-                self._wipe_rolling_textbox()
-
-            # Wipe the rolling text box before writing if the event has the wipe command.
-            elif "wipe" in self.event_parser.current_event.commands:
-                self._wipe_rolling_textbox()
-
-            # If unwiped, you may have to clear up old unpicked up items
-            elif "clean_up_items" in self.event_parser.current_event.commands:
-                self._clean_up_items()
-
-            # Check to see if a character tag needs to be placed.
-            if "character" in self.event_parser.current_event.commands:
-                self._write_character_tag()
-
-            # Rerender the header in case it has changed
-            self._render_header_surface()
-
-        # If the event is suppressing text, skip rendering and end the event.
-        elif self.words and self.event_parser.suppress_text:
-            self.words.clear()
-
-            self.event_parser.suppress_text = False
-
-            self._end_event()
-
-        # If there are words in the list, write them
-        elif self.words:
-
-            self._write_single_word()
-
-            if not self.words and self.is_writing_text:
-
-                # Move the text rect to the next line
-                self.last_placed_text_rect.top = self.last_placed_text_rect.bottom
-                self.last_placed_text_rect.right = self.settings.paragraph_tab_width
-                self._extend_rolling_text_surface()
-
-                self._end_event()
-
-        return self.is_writing_text
+    def _extend_rolling_text_surface(self):
+        """Extends the rolling text surface to accommodate new text."""
+        if self.last_placed_text_rect.bottom > self.rolling_text_surface.get_height():
+            new_rolling_text_surface = pygame.Surface(
+                (self.rolling_text_surface.get_width(), self.last_placed_text_rect.bottom))
+            new_rolling_text_surface.fill(self.settings.dynamic_colors["transparency"])
+            new_rolling_text_surface.set_colorkey(self.settings.dynamic_colors["transparency"])
+            new_rolling_text_surface.blit(self.rolling_text_surface, (0, 0))
+            self.rolling_text_surface = new_rolling_text_surface
+            self.rolling_textbox_focus_rect.bottom = self.last_placed_text_rect.bottom
 
     def _read_inline_expression(self, expression):
         """Given a string from the _write_single_word function, determines if it has an expression, such as
@@ -298,11 +203,31 @@ class GUIAdventureScreen:
         else:
             return None, next_word
 
-    def _clean_up_items(self):
-        """Sets all item topics in the rolling text box to read as already picked up."""
-        for each_sprite in self.rolling_text_clickable_topics_group:
-            each_sprite.is_picked_up = True
-            each_sprite.update()
+    def _render_header_surface(self):
+        """Renders the header surface with the header text."""
+        self.header_surface.fill(self.settings.dynamic_colors["transparency"])
+
+        rendered_text = self.settings.font_heading_1.render(self.event_parser.current_event_header, False, self.settings.dynamic_colors["header_text"], self.settings.dynamic_colors["transparency"])
+        rendered_text_rect = rendered_text.get_rect()
+        rendered_text_rect.centery = self.header_rect.height * 0.5
+
+        self.header_surface.blit(rendered_text, rendered_text_rect)
+
+    def _resize_sidebar_surface(self, target_height):
+        """Resizes the sidebar surface to the given target_height. Will not adjust to a size less then the base length."""
+        target_height = round(target_height)
+
+        if target_height < self.sidebar_topics_rect.height:
+            target_height = self.sidebar_topics_rect.height
+
+        if target_height != self.sidebar_topics_surface.get_height():
+            sidebar_topics_surface = pygame.Surface((self.sidebar_topics_surface.get_width(), target_height))
+            sidebar_topics_surface.fill(self.settings.dynamic_colors["transparency"])
+            sidebar_topics_surface.set_colorkey(self.settings.dynamic_colors["transparency"])
+            sidebar_topics_surface.blit(self.sidebar_topics_surface, (0, 0))
+            self.sidebar_topics_surface = sidebar_topics_surface
+
+        # TODO make the sidebar focus rect
 
     def _wipe_rolling_textbox(self):
         """Wipes the rolling text box, 'factory reset'."""
@@ -320,16 +245,108 @@ class GUIAdventureScreen:
         # Empty the rolling topic group
         self.rolling_text_clickable_topics_group.empty()
 
-    def _extend_rolling_text_surface(self):
-        """Extends the rolling text surface to accommodate new text."""
-        if self.last_placed_text_rect.bottom > self.rolling_text_surface.get_height():
-            new_rolling_text_surface = pygame.Surface(
-                (self.rolling_text_surface.get_width(), self.last_placed_text_rect.bottom))
-            new_rolling_text_surface.fill(self.settings.dynamic_colors["transparency"])
-            new_rolling_text_surface.set_colorkey(self.settings.dynamic_colors["transparency"])
-            new_rolling_text_surface.blit(self.rolling_text_surface, (0, 0))
-            self.rolling_text_surface = new_rolling_text_surface
-            self.rolling_textbox_focus_rect.bottom = self.last_placed_text_rect.bottom
+    def _write_character_tag(self):
+        """Draws the character tag when applicable. Must be applied before a new line is written."""
+        if not self.event_parser.suppress_text:
+            # Build the string to render
+            title_text_string = self.event_parser.current_event.said_by_character.upper() + " -  "
+
+            # Create the render and the rects
+            title_text_render = self.settings.font_text_small_caps.render(title_text_string, True,
+                                                                          self.settings.dynamic_colors["character_tag"],
+                                                                          self.settings.dynamic_colors["transparency"])
+            title_text_rect = title_text_render.get_rect()
+            title_text_rect.left = 0
+            title_text_rect.centery = self.last_placed_text_rect.centery
+            self.rolling_text_surface.blit(title_text_render, title_text_rect)
+
+            # Move the last placed text rect, but don't copy this one, it is the wrong size
+            self.last_placed_text_rect.right = title_text_rect.right
+
+    def _write_single_word(self):
+        """Draws a single word from the words list for the _write_next_word function."""
+
+        # Establish local variables
+        next_topic, next_word = self._read_inline_expression(self.words.pop(0))
+
+        # Check that we don't need a new line for this word, if we do, adjust self.last_placed_text_rect
+        if self.settings.font_text_body.size(" " + next_word)[0] + self.last_placed_text_rect.right > \
+                self.settings.render_surface_size[0] * 0.39:
+            self.last_placed_text_rect.right = 0
+            self.last_placed_text_rect.top = self.last_placed_text_rect.bottom
+
+            # If the text rect would run off of the rolling box, extend the surface
+            self._extend_rolling_text_surface()
+
+        # Put the next word on the rolling display, using topic functionality if it is a topic and manually otherwise
+        if next_topic:
+            next_topic.rect.left = self.last_placed_text_rect.right + self.settings.font_text_body.size(" ")[0]
+            next_topic.rect.bottom = self.last_placed_text_rect.bottom
+            next_topic.draw(self.rolling_text_surface)
+            self.last_placed_text_rect = next_topic.rect.copy()
+
+        else:
+            this_word_render = self.settings.render_text_body_font(next_word, self.settings.dynamic_colors["body_text"], self.is_italics, self.is_bold)
+            this_word_rect = this_word_render.get_rect()
+            this_word_rect.left = self.last_placed_text_rect.right + self.settings.font_text_body.size(" ")[0]
+            this_word_rect.bottom = self.last_placed_text_rect.bottom
+            self.rolling_text_surface.blit(this_word_render, this_word_rect)
+            self.last_placed_text_rect = this_word_rect
+
+    def _write_next_word(self):
+        """Draw the next word in the rolling text box. Returns False if it is done writing
+        the current scene text and display buttons, True while writing is still ongoing."""
+
+        # Check to see if the current text from the event has been split, split it if not
+        if self.is_writing_text and not self.words:
+            self.words = self.event_parser.current_event.text.split()
+
+            # Check if the scene style has changed, if so, update the bg image and wipe the text box
+            if self.event_parser.scene_style != self.settings.current_style_name:
+                self.settings.current_style_name = self.event_parser.scene_style
+                self.settings.dynamic_colors = self.settings.get_dynamic_colors(self.event_parser.scene_style)
+
+                self.gui_bg = gui.init_bg_surface(self.settings, "images/gui/debug_gui_winbg.png")
+                self._wipe_rolling_textbox()
+
+            # Wipe the rolling text box before writing if the event has the wipe command.
+            elif "wipe" in self.event_parser.current_event.commands:
+                self._wipe_rolling_textbox()
+
+            # If unwiped, you may have to clear up old unpicked up items
+            elif "clean_up_items" in self.event_parser.current_event.commands:
+                self._clean_up_items()
+
+            # Check to see if a character tag needs to be placed.
+            if "character" in self.event_parser.current_event.commands:
+                self._write_character_tag()
+
+            # Rerender the header in case it has changed
+            self._render_header_surface()
+
+        # If the event is suppressing text, skip rendering and end the event.
+        elif self.words and self.event_parser.suppress_text:
+            self.words.clear()
+
+            self.event_parser.suppress_text = False
+
+            self._end_event()
+
+        # If there are words in the list, write them
+        elif self.words:
+
+            self._write_single_word()
+
+            if not self.words and self.is_writing_text:
+
+                # Move the text rect to the next line
+                self.last_placed_text_rect.top = self.last_placed_text_rect.bottom
+                self.last_placed_text_rect.right = self.settings.paragraph_tab_width
+                self._extend_rolling_text_surface()
+
+                self._end_event()
+
+        return self.is_writing_text
 
     def draw(self):
         """Draws the whole gui panel to self.render_surface."""
@@ -338,28 +355,6 @@ class GUIAdventureScreen:
         self.redraw_buttons()
         self.redraw_sidebar_topics()
         self.redraw_header()
-
-    def init_bg_surface(self, bg_file_path):
-        """Takes a filepath and returns the gui_bg surface loaded from that path,
-        colored to match the current dynamic color style."""
-
-        loaded_image = pygame.image.load(bg_file_path)
-        gui_bg = pygame.Surface(loaded_image.get_size())
-        gui_bg.blit(loaded_image, (0, 0))
-
-        # Create the pixel array
-        pixel_array = pygame.PixelArray(gui_bg)
-
-        # Recolor the pixels
-        pixel_array.replace((0, 0, 0), self.settings.dynamic_colors["bg_dark"])
-        pixel_array.replace((64, 64, 64), self.settings.dynamic_colors["bg_midtone_dark"])
-        pixel_array.replace((128, 128, 128), self.settings.dynamic_colors["bg_midtone_light"])
-        pixel_array.replace((255, 255, 255), self.settings.dynamic_colors["bg_light"])
-
-        # Close the array
-        pixel_array.close()
-
-        return pygame.transform.scale(gui_bg, self.settings.render_surface_size)
 
     def add_to_sidebar_topics(self, topic_object):
         """Adds the given topic object to the sidebar as a topic sprite."""
@@ -370,6 +365,36 @@ class GUIAdventureScreen:
         for each_topic in self.character.topics:
             if each_topic.is_known_topic:
                 SidebarTopicSprite(each_topic.title, each_topic, self, self.sidebar_topics_group)
+
+    def scroll_rolling_textbox(self, scroll_down):
+        """Scrolls the main rolling text box, so that old text can be seen and next text returned to."""
+
+        if scroll_down:
+            if self.rolling_textbox_focus_rect.bottom + self.settings.scroll_speed > self.rolling_text_surface.get_height():
+                self.rolling_textbox_focus_rect.bottom = self.rolling_text_surface.get_height()
+            else:
+                self.rolling_textbox_focus_rect.bottom += self.settings.scroll_speed
+
+        else:
+            if self.rolling_textbox_focus_rect.top - self.settings.scroll_speed < 0:
+                self.rolling_textbox_focus_rect.top = 0
+            else:
+                self.rolling_textbox_focus_rect.top -= self.settings.scroll_speed
+
+    def scroll_sidebar_topics(self, scroll_down):
+        """Scrolls the sidebar topics so that more of the topics can be seen than can fit on the screen at once."""
+
+        if scroll_down:
+            if self.sidebar_focus_rect.bottom + self.settings.scroll_speed > self.sidebar_topics_surface.get_height():
+                self.sidebar_focus_rect.bottom = self.sidebar_topics_surface.get_height()
+            else:
+                self.sidebar_focus_rect.bottom += self.settings.scroll_speed
+
+        else:
+            if self.sidebar_focus_rect.top - self.settings.scroll_speed < 0:
+                self.sidebar_focus_rect.top = 0
+            else:
+                self.sidebar_focus_rect.top -= self.settings.scroll_speed
 
     def sort_sidebar_topics(self):
         """Sorts the positions of the sidebar topics in the sprite group and sets their is_active states."""
@@ -396,7 +421,7 @@ class GUIAdventureScreen:
                     current_y_position += each_topic_sprite.rect.height
                     break
 
-        current_y_position += 50    # Creates a margin between active and inactive buttons
+        current_y_position += self.settings.paragraph_tab_width    # Creates a margin between active and inactive buttons
 
         # Place grayed out topics
         for each_topic in grayed_out_topics:
@@ -407,6 +432,8 @@ class GUIAdventureScreen:
                     each_topic_sprite.rect.top = current_y_position
                     current_y_position += each_topic_sprite.rect.height
                     break
+
+        self._resize_sidebar_surface(current_y_position)
 
     def set_event_markers(self):
         """Sets the event markers. Should only be called once per event."""
@@ -445,7 +472,7 @@ class GUIAdventureScreen:
         self.render_surface.blit(self.gui_bg, self.sidebar_topics_rect, self.sidebar_topics_rect)
         self.sidebar_topics_surface.fill(self.settings.dynamic_colors["transparency"])
         self.sidebar_topics_group.draw(self.sidebar_topics_surface)
-        self.render_surface.blit(self.sidebar_topics_surface, self.sidebar_topics_rect)
+        self.render_surface.blit(self.sidebar_topics_surface, self.sidebar_topics_rect, self.sidebar_focus_rect)
 
     def redraw_header(self):
         """Redraws the scene title header."""
@@ -460,26 +487,55 @@ class GUIAdventureScreen:
 
     def update_controls(self):
         """Checks for inputs from the controller and processes them."""
-        clicked_button = None
+
+        # Check for mouse clicks
         if self.controller.last_lmb_up:
+            clicked_button = None
 
             # Check the main rolling text box
             if self.rolling_textbox_rect.collidepoint(self.controller.last_lmb_up):
-                offset = (self.rolling_textbox_rect.left, self.rolling_textbox_rect.top + self.rolling_textbox_rect.height - self.rolling_text_surface.get_height() )
+                offset = (self.rolling_textbox_rect.left, self.rolling_textbox_rect.top + self.rolling_textbox_rect.height - self.rolling_textbox_focus_rect.bottom)
                 clicked_button = self.controller.click_detect_group(self.rolling_text_clickable_topics_group, check_button_down=False, offset=offset)
 
             # Check the topics sidebar
             elif self.sidebar_topics_rect.collidepoint(self.controller.last_lmb_up):
-                clicked_button = self.controller.click_detect_group(self.sidebar_topics_group, check_button_down=False, offset=self.sidebar_topics_rect.topleft)
+                offset = (self.sidebar_topics_rect.left, self.sidebar_topics_rect.top + self.sidebar_topics_rect.height - self.sidebar_focus_rect.bottom)
+                clicked_button = self.controller.click_detect_group(self.sidebar_topics_group, check_button_down=False, offset=offset)
 
             # Check global buttons
             else:
                 clicked_button = self.controller.click_detect_group(self.buttons_group, check_button_down=False)
 
-        # If a resulting button was found.
-        if clicked_button:
-            # If one indeed has been clicked, run its on_click function
-            clicked_button.on_click()
+            # If a resulting button was found.
+            if clicked_button:
+                # If one indeed has been clicked, run its on_click function
+                clicked_button.on_click()
+
+        # Check for mouse scroll down events
+        if self.controller.last_scroll_down:
+
+            # Check the main rolling text box
+            if self.rolling_textbox_rect.collidepoint(self.controller.last_scroll_down):
+                self.scroll_rolling_textbox(True)
+
+            # Check topics sidebar
+            elif self.sidebar_topics_rect.collidepoint(self.controller.last_scroll_down):
+                self.scroll_sidebar_topics(True)
+
+            self.controller.last_scroll_down = None
+
+        # Check for mouse scroll up events
+        elif self.controller.last_scroll_up:
+
+            # Check the main rolling text box
+            if self.rolling_textbox_rect.collidepoint(self.controller.last_scroll_up):
+                self.scroll_rolling_textbox(False)
+
+            # Check topics sidebar
+            elif self.sidebar_topics_rect.collidepoint(self.controller.last_scroll_up):
+                self.scroll_sidebar_topics(False)
+
+            self.controller.last_scroll_up = None
 
 
 class TopicSprite(gui.Button):

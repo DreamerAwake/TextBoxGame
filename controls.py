@@ -13,9 +13,14 @@ class Controller:
         self._init_control_variables()
 
     def _init_control_variables(self):
-        """Initializes the control variables to None"""
+        """Creates and sets all the control processing variables for both the initializer and for self.disable()."""
+        # Left mouse button
         self.last_lmb_down = None
         self.last_lmb_up = None
+
+        # Scroll wheel
+        self.last_scroll_down = None
+        self.last_scroll_up = None
 
     def update(self):
         """Updates for a single frame of player control."""
@@ -29,6 +34,13 @@ class Controller:
                     self.last_lmb_down = (event.pos[0] * self.screen_render_offset_ratio, event.pos[1] * self.screen_render_offset_ratio)
                 elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:      # Handles left mouse clicks
                     self.last_lmb_up = (event.pos[0] * self.screen_render_offset_ratio, event.pos[1] * self.screen_render_offset_ratio)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 4:      # Upward scrolling
+                    event_pos = pygame.mouse.get_pos()
+                    self.last_scroll_up = (event_pos[0] * self.screen_render_offset_ratio, event_pos[1] * self.screen_render_offset_ratio)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 5:      # Downward scrolling
+                    event_pos = pygame.mouse.get_pos()
+                    self.last_scroll_down = (event_pos[0] * self.screen_render_offset_ratio, event_pos[1] * self.screen_render_offset_ratio)
+
 
     def disable(self):
         """Disables the controls and empties any stored control data."""

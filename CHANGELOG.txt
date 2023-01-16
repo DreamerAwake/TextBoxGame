@@ -1,0 +1,10 @@
+v0.1
+- First version number
+
+v0.1.1
+- Added control detection for scroll wheel inputs
+- Added scrolling for the main text box
+- Added scrolling for the sidebar
+- Added the groundwork code of an inventory screen
+
+- Reorganized the reader screen file's functions

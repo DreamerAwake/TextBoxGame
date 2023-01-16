@@ -26,8 +26,11 @@ class Settings:
         self.font_text_small_caps = pygame.font.SysFont("sourcesanspro", 28)
         self.font_UI_text = pygame.font.SysFont("nirmalaui", 36)
 
+        # Spacing variables
         self.paragraph_tab_width = 50
         self.paragraph_spacing_below = 10
+
+        self.scroll_speed = 15
 
         # Color Settings
         self.color_styles, self.color_keys = self._init_color_styles("scenes/styles.csv")
